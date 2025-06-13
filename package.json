@@ -1,25 +1,49 @@
 {
   "name": "r3ftest2",
-  "version": "0.0.0",
+  "version": "0.0.1",
   "type": "module",
   "description": "Dijkstra Viewer Interface for Developers",
-  "homepage": "",
+  "homepage": "https://github.com/Dzsidzsi/R3FTest2",
+  "repository": {
+    "type": "git",
+    "url": "git+https://github.com/Dzsidzsi/R3FTest2.git"
+  },
+  "private": false,
+  "publishConfig": {
+    "access": "restricted",
+    "registry": "https://npm.pkg.github.com/"
+  },
+  "types": "./dist/types/index.d.ts",
+  "declaration": true,
+  "declarationDir": "dist/types",
+  "emitDeclarationOnly": true,
+  "exports": {
+    ".": {
+      "types": "./dist/types/index.d.ts",
+      "import": "./dist/index.js",
+      "require": "./dist/index.cjs"
+    }
+  },
+  "files": [
+    "dist"
+  ],
   "scripts": {
     "dev": "vite",
     "build": "tsc -b && vite build",
     "lint": "eslint .",
-    "preview": "vite preview"
+    "preview": "vite preview",
+    "release": "standard-version && git push --follow-tags && npm publish"
   },
   "dependencies": {
     "@react-three/drei": "^10.2.0",
     "@react-three/fiber": "^9.1.2",
     "@types/three": "^0.177.0",
-    "react": "^19.1.0",
-    "react-dom": "^19.1.0",
-    "three": "^0.177.0"
+    "three": "^0.177.0",
+    "vite-plugin-dts": "^4.5.4"
   },
   "devDependencies": {
     "@eslint/js": "^9.25.0",
+    "@types/node": "^24.0.1",
     "@types/react": "^19.1.2",
     "@types/react-dom": "^19.1.2",
     "@vitejs/plugin-react-swc": "^3.9.0",
@@ -27,8 +51,13 @@
     "eslint-plugin-react-hooks": "^5.2.0",
     "eslint-plugin-react-refresh": "^0.4.19",
     "globals": "^16.0.0",
+    "standard-version": "^9.5.0",
     "typescript": "~5.8.3",
     "typescript-eslint": "^8.30.1",
     "vite": "^6.3.5"
+  },
+  "peerDependencies": {
+    "react": "^19.1.0",
+    "react-dom": "^19.1.0"
   }
 }
