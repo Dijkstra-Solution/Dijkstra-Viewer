@@ -91,7 +91,7 @@ export class ViewerAPI {
         this.#innerEntities.set(child.guid, child);
 
         const geometry = new THREE.BufferGeometry();
-        const arr = [];
+        const arr: number[] = [];
         for (let i = 0; i < child.vertices.length - 3; i += 3) {
           arr.push(child.vertices[0], child.vertices[1], child.vertices[2]);
           arr.push(
@@ -126,9 +126,4 @@ export class ViewerAPI {
     //TODO - calculate new geometry
     //TODO - add to entities
   }
-
-  // #regenMesh() {
-  //   //TODO - iterate over entities and create new geometry
-  //   this.fire(FrameworkEvents.SceneUpdated, { geometry: this.#geometry });
-  // }
 }

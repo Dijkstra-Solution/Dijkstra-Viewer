@@ -88,4 +88,4 @@ function Viewer({ api: ViewerAPI }: { api: ViewerAPI }) {
   );
 }
 
-export default Viewer;
+export { Viewer };

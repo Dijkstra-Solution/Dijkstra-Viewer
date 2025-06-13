@@ -1,5 +1,5 @@
 import "./App.css";
-import Viewer from "./viewer/Viewer";
+import { Viewer } from "./viewer/Viewer";
 import { ViewerAPI } from "./viewerapi/ViewerAPI";
 
 function App() {
