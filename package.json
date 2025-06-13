@@ -1,6 +1,6 @@
 {
   "name": "@dzsidzsi/r3ftest2",
-  "version": "0.0.4",
+  "version": "0.0.5",
   "type": "module",
   "description": "Dijkstra Viewer Interface for Developers",
   "homepage": "https://github.com/Dzsidzsi/R3FTest2",
@@ -22,8 +22,8 @@
   "exports": {
     ".": {
       "types": "./dist/types/index.d.ts",
-      "import": "./dist/index.js",
-      "require": "./dist/index.cjs"
+      "import": "./dist/index.es.js",
+      "require": "./dist/index.umd.cjs"
     }
   },
   "files": [
