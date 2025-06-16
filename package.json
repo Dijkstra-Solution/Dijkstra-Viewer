@@ -1,6 +1,6 @@
 {
   "name": "@dzsidzsi/r3ftest2",
-  "version": "0.0.15",
+  "version": "0.0.16",
   "type": "module",
   "description": "Dijkstra Viewer Interface for Developers",
   "homepage": "https://github.com/Dzsidzsi/R3FTest2",
@@ -13,19 +13,17 @@
     "access": "restricted",
     "registry": "https://npm.pkg.github.com/"
   },
-  "main": "./dist/index.es.js",
-  "module": "./dist/index.es.js",
+  "main": "./dist/index.cjs",
+  "module": "./dist/index.js",
   "types": "./dist/types/index.d.ts",
   "declaration": true,
   "declarationDir": "dist/types",
   "emitDeclarationOnly": true,
   "exports": {
     ".": {
+      "types": "./dist/types/index.d.ts",
       "import": "./dist/index.es.js",
-      "types": "./dist/types/index.d.ts"
-    },
-    "./viewer": {
-      "import": "./dist/viewer.es.js"
+      "require": "./dist/index.umd.cjs"
     }
   },
   "files": [
@@ -39,10 +37,6 @@
     "release": "standard-version && git push --follow-tags && npm publish"
   },
   "dependencies": {
-    "@r2wc/react-to-web-component": "^2.0.4",
-    "@react-three/drei": "^10.2.0",
-    "@react-three/fiber": "^9.1.2",
-    "@types/three": "^0.177.0",
     "three": "^0.177.0",
     "vite-plugin-dts": "^4.5.4"
   },
@@ -63,6 +57,9 @@
   },
   "peerDependencies": {
     "react": "^19.1.0",
-    "react-dom": "^19.1.0"
+    "react-dom": "^19.1.0",
+    "@react-three/drei": "^10.2.0",
+    "@react-three/fiber": "^9.1.2",
+    "@types/three": "^0.177.0"
   }
 }
