@@ -83,6 +83,9 @@ export class ViewerAPI {
     },
   };
 
+  Views = {};
+
+
   AddEntities(json: string) {
     const object = JSON.parse(json);
     if (object.children) {
