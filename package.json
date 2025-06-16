@@ -1,6 +1,6 @@
 {
   "name": "@dzsidzsi/r3ftest2",
-  "version": "0.0.19",
+  "version": "0.0.20",
   "type": "module",
   "description": "Dijkstra Viewer Interface for Developers",
   "homepage": "https://github.com/Dzsidzsi/R3FTest2",
@@ -37,6 +37,7 @@
     "release": "standard-version && git push --follow-tags && npm publish"
   },
   "dependencies": {
+    "@r2wc/react-to-web-component": "^2.0.4",
     "three": "^0.177.0",
     "@react-three/drei": "^10.2.0",
     "@react-three/fiber": "^9.1.2"
