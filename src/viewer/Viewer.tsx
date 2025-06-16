@@ -2,10 +2,11 @@ import { Canvas } from "@react-three/fiber";
 import { CameraControls } from "@react-three/drei";
 import { useCallback, useEffect, useRef, useState } from "react";
 import * as THREE from "three";
-import type { ViewerAPI } from "../viewerapi/ViewerAPI";
 import { Events } from "../viewerapi/Events";
+import { ClientBase } from "@/client/ClientBase";
 
-function Viewer({ api: ViewerAPI }: { api: ViewerAPI }) {
+function Viewer({ client: client }: { client: ClientBase }) {
+  const ViewerAPI = client.ViewerAPI;
   const meshRef = useRef<THREE.Mesh>(null);
   const [geometry, setGeometry] = useState<THREE.BufferGeometry>();
   const cameraControlRef = useRef<CameraControls | null>(null);

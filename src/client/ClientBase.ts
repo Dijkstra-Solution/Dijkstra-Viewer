@@ -1,7 +1,7 @@
 import { ViewerAPI } from "../viewerapi/ViewerAPI";
 
 abstract class ClientBase {
-  protected ViewerAPI: ViewerAPI;
+  readonly ViewerAPI: ViewerAPI;
 
   constructor(api: ViewerAPI) {
     this.ViewerAPI = api;
