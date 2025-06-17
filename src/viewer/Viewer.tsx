@@ -2,10 +2,16 @@ import { Canvas } from "@react-three/fiber";
 import { CameraControls } from "@react-three/drei";
 import { useCallback, useEffect, useRef, useState } from "react";
 import * as THREE from "three";
-import { Events } from "../viewerapi/Events";
+import { Events, ViewType } from "../viewerapi/Events";
 import { ClientBase } from "@/client/ClientBase";
+import { View } from "../viewerapi/View";
 
-function Viewer({ client: client }: { client: ClientBase }) {
+interface ViewerProps {
+  client: ClientBase;
+  initialView?: ViewType | (() => void);
+}
+
+function Viewer({ client, initialView = 'perspective' }: ViewerProps) {
   const ViewerAPI = client.ViewerAPI;
   const meshRef = useRef<THREE.Mesh>(null);
   const [geometry, setGeometry] = useState<THREE.BufferGeometry>();
@@ -59,6 +65,40 @@ function Viewer({ client: client }: { client: ClientBase }) {
     ViewerAPI.on(Events.SceneUpdated, regen);
     return () => ViewerAPI.off(Events.SceneUpdated, regen);
   }, [ViewerAPI]);
+
+  // Init View Module with ViewerApi
+  useEffect(() => {
+    View.initialize(ViewerAPI);
+  }, [ViewerAPI]);
+
+  // Setup camera controls monitoring
+  useEffect(() => {
+    // Try to setup camera controls when available
+    const checkInterval = setInterval(() => {
+      if (cameraControlRef.current) {
+        console.log("Camera controls reference set successfully");
+        View.setCameraControlsRef(cameraControlRef);
+        
+        // Set initial view once camera controls are available
+        if (initialView) {
+          if (typeof initialView === 'function') {
+            // Function feature direct call
+            console.log('Setting initial view from function');
+            initialView();
+          } else {
+            // String feature with View.setView
+            console.log(`Setting initial view to: ${initialView}`);
+            View.setView(initialView);
+          }
+        }
+        
+        clearInterval(checkInterval);
+      }
+    }, 100); // Check every 100ms
+    
+    // Cleanup interval when component unmounts
+    return () => clearInterval(checkInterval);
+  }, [initialView]);
 
   return (
     <div style={{ width: "100vw", height: "100vh" }}>

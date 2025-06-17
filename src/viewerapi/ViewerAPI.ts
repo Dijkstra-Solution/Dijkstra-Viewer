@@ -4,6 +4,7 @@ import { Events, type EventPayloads, type EventType } from "./Events";
 import { BufferGeometryUtils } from "three/examples/jsm/Addons.js";
 import type { AEntity } from "./AEntity";
 import { Polygon } from "./Polygon";
+import { View } from "./View";
 
 type EventCallback<T> = (payload: T) => void;
 
@@ -83,7 +84,17 @@ export class ViewerAPI {
     },
   };
 
-  Views = {};
+  Views = {
+    topview: () => {
+      View.topview();
+    },
+    parallelView: () => {
+      View.parallelView();
+    },
+    perspectiveView: () => {
+      View.perspectiveView();
+    }
+  };
 
 
   AddEntities(json: string) {
