@@ -18,15 +18,15 @@ export class ViewerAPI {
     if (!this.listeners.has(event)) this.listeners.set(event, new Set());
     this.listeners.get(event)!.add(callback);
   }
-
   off<T extends EventType>(
     event: T,
     callback: EventCallback<EventPayloads[T]>
   ) {
     this.listeners.get(event)?.delete(callback);
   }
-
-  /** @internal */ //TODO - set flag somewhere
+  /**
+   * Pls dont use this
+   */
   fire<T extends EventType>(event: T, payload: EventPayloads[T]) {
     this.listeners
       .get(event)

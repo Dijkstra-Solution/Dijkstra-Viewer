@@ -7,6 +7,9 @@ export const Events = {
   SceneClicked: "SceneClicked",
   SceneUpdated: "SceneUpdated",
   StatusMessage: "StatusMessage",
+
+  ViewCreated: "ViewCreated",
+  ViewRemoved: "ViewRemoved",
 } as const;
 
 export type EventPayloads = {
@@ -14,4 +17,7 @@ export type EventPayloads = {
   [Events.SceneClicked]: { point: Vector3 }; //TODO
   [Events.SceneUpdated]: { geometry: BufferGeometry };
   [Events.StatusMessage]: { message: string };
+
+  [Events.ViewCreated]: { viewId: string };
+  [Events.ViewRemoved]: { viewId: string };
 };
