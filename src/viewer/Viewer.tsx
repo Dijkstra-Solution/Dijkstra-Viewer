@@ -9,6 +9,8 @@ import { EventHandlerMap } from "./EventHandlerMap";
 interface ViewerProps {
   eventHandlers?: EventHandlerMap;
   initialView?: ViewType | (() => void);
+  style?: React.CSSProperties; // Stílusok a container elemhez
+  className?: string;         // CSS osztály a container elemhez
 }
 
 function Viewer({ eventHandlers, initialView = "perspective" }: ViewerProps) {
@@ -28,6 +30,7 @@ function Viewer({ eventHandlers, initialView = "perspective" }: ViewerProps) {
 
   // const ViewerAPI = client.ViewerAPI;
   const cameraControlRef = useRef<CameraControls | null>(null);
+  const { on, off, fire } = useViewer();
 
   const three = useRef<{
     scene: THREE.Scene;
@@ -53,9 +56,7 @@ function Viewer({ eventHandlers, initialView = "perspective" }: ViewerProps) {
       const intersects = raycaster.intersectObjects(scene.children);
       if (intersects.length > 0) {
         const guid = intersects[0].object.userData.guid ?? "jej";
-        console.log("Event fired");
         fire(Events.EntitySelected, { guid });
-        // ViewerAPI.fire(Events.EntitySelected, { guid });
       }
 
       const pointOnPlane = raycaster.ray.intersectPlane(
@@ -70,6 +71,7 @@ function Viewer({ eventHandlers, initialView = "perspective" }: ViewerProps) {
         // ViewerAPI.fire(Events.SceneClicked, { point: pointOnPlane });
       }
     },
+    // eslint-disable-next-line react-hooks/exhaustive-deps
     []
   );
 
@@ -78,14 +80,9 @@ function Viewer({ eventHandlers, initialView = "perspective" }: ViewerProps) {
   //     setGeometry(payload.geometry);
   //   };
 
-  //   ViewerAPI.on(Events.SceneUpdated, regen);
-  //   return () => ViewerAPI.off(Events.SceneUpdated, regen);
-  // }, [ViewerAPI]);
-
-  // // Init View Module with ViewerApi
-  // useEffect(() => {
-  //   View.initialize(ViewerAPI);
-  // }, [ViewerAPI]);
+    on(Events.SceneUpdated, regen);
+    return () => off(Events.SceneUpdated, regen);
+  }, );
 
   // // Setup camera controls monitoring
   // useEffect(() => {
@@ -116,9 +113,15 @@ function Viewer({ eventHandlers, initialView = "perspective" }: ViewerProps) {
   //   return () => clearInterval(checkInterval);
   // }, [initialView]);
 
+  // Container stílus a felhasználói stílus és az alapértelmezett értékek kombinálásával
+  const containerStyles: React.CSSProperties = {
+    ...style,
+    position: 'relative',
+    margin:'10px',
+    flex:1
+  };
   return (
-    <div style={{ width: "100vw", height: "100vh" }}>
-      {/* TODO - make canvas stretch to fill available space */}
+    <div style={containerStyles}>
       <Canvas
         camera={{ position: [0, 0, 5] }}
         onCreated={({ scene, camera, raycaster, size }) => {
