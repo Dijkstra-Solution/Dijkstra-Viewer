@@ -1,20 +1,37 @@
 import "./App.css";
-import { useEventEmitter } from "./viewer/hooks/useEventEmitter";
 import { Viewer } from "./viewer/Viewer";
 import { ViewerProvider } from "./viewer/ViewerProvider";
-import { Events } from "./viewerapi/Events";
+import { ClientBase } from "./client/ClientBase";
+import { ViewerAPI } from "./viewerapi/ViewerAPI";
 
-function showMessage() {
-  alert("Hello");
+
+class MyClient extends ClientBase {
+  constructor() {
+    super(api);
+  }
+
+  protected init(): void {
+    // TODO: Implement init logic
+  }
 }
+const api = new ViewerAPI();
+const client = new MyClient();
 
 function App() {
-  const { on, off, fire } = useEventEmitter();
-  on(Events.SceneUpdated, showMessage);
+
   return (
     <>
       <ViewerProvider>
-        <Viewer client={null}></Viewer>
+          <div style={{ padding: '10px' }}>
+            <button onClick={() => api.Views.topview()}>Top View</button>
+            <button onClick={() => api.Views.parallelView()}>Parallel View</button>
+            <button onClick={() => api.Views.perspectiveView()}>Perspective View</button>
+          </div>
+        
+        
+          <Viewer 
+            client={client}
+          />
       </ViewerProvider>
     </>
   );

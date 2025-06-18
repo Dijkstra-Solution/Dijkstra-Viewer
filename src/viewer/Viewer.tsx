@@ -5,17 +5,24 @@ import * as THREE from "three";
 import { Events, ViewType } from "../viewerapi/Events";
 import { ClientBase } from "@/client/ClientBase";
 import { View } from "../viewerapi/View";
+import { useViewer } from "./hooks/useViewer";
 
 interface ViewerProps {
   client: ClientBase;
   initialView?: ViewType | (() => void);
+  style?: React.CSSProperties; // Stílusok a container elemhez
+  className?: string;         // CSS osztály a container elemhez
 }
 
-function Viewer({ client, initialView = 'perspective' }: ViewerProps) {
-  const ViewerAPI = client.ViewerAPI;
+function Viewer({ 
+  initialView = 'perspective',
+  style = {}
+}: ViewerProps) {
+  
   const meshRef = useRef<THREE.Mesh>(null);
   const [geometry, setGeometry] = useState<THREE.BufferGeometry>();
   const cameraControlRef = useRef<CameraControls | null>(null);
+  const { on, off, fire } = useViewer();
 
   const three = useRef<{
     scene: THREE.Scene;
@@ -42,7 +49,7 @@ function Viewer({ client, initialView = 'perspective' }: ViewerProps) {
       console.log(intersects);
       if (intersects.length > 0) {
         const guid = intersects[0].object.userData.guid ?? "jej";
-        ViewerAPI.fire(Events.EntitySelected, { guid });
+        fire(Events.EntitySelected, { guid });
       }
 
       const pointOnPlane = raycaster.ray.intersectPlane(
@@ -51,9 +58,10 @@ function Viewer({ client, initialView = 'perspective' }: ViewerProps) {
       );
 
       if (pointOnPlane) {
-        ViewerAPI.fire(Events.SceneClicked, { point: pointOnPlane });
+        fire(Events.SceneClicked, { point: pointOnPlane });
       }
     },
+    // eslint-disable-next-line react-hooks/exhaustive-deps
     []
   );
 
@@ -62,14 +70,9 @@ function Viewer({ client, initialView = 'perspective' }: ViewerProps) {
       setGeometry(payload.geometry);
     };
 
-    ViewerAPI.on(Events.SceneUpdated, regen);
-    return () => ViewerAPI.off(Events.SceneUpdated, regen);
-  }, [ViewerAPI]);
-
-  // Init View Module with ViewerApi
-  useEffect(() => {
-    View.initialize(ViewerAPI);
-  }, [ViewerAPI]);
+    on(Events.SceneUpdated, regen);
+    return () => off(Events.SceneUpdated, regen);
+  }, );
 
   // Setup camera controls monitoring
   useEffect(() => {
@@ -94,15 +97,21 @@ function Viewer({ client, initialView = 'perspective' }: ViewerProps) {
         
         clearInterval(checkInterval);
       }
-    }, 100); // Check every 100ms
+    },100); // Check every 100ms
     
     // Cleanup interval when component unmounts
     return () => clearInterval(checkInterval);
   }, [initialView]);
 
+  // Container stílus a felhasználói stílus és az alapértelmezett értékek kombinálásával
+  const containerStyles: React.CSSProperties = {
+    ...style,
+    position: 'relative',
+    margin:'10px',
+    flex:1
+  };
   return (
-    <div style={{ width: "100vw", height: "100vh" }}>
-      {/* TODO - make canvas stretch to fill available space */}
+    <div style={containerStyles}>
       <Canvas
         camera={{ position: [0, 0, 5] }}
         onCreated={({ scene, camera, raycaster, size }) => {
