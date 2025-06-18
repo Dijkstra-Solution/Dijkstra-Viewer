@@ -18,7 +18,7 @@ function Viewer({
   initialView = "perspective",
   style,
 }: ViewerProps) {
-  const { on, off, fire, actions, mergedGeometry } = useViewer();
+  const { on, off, fire, mergedGeometry, viewManager } = useViewer();
 
   useEffect(() => {
     Object.entries(eventHandlers ?? {}).forEach(([event, handler]) => {
@@ -68,44 +68,40 @@ function Viewer({
       );
 
       if (pointOnPlane) {
-        fire(Events.SceneClicked, {
-          point: [pointOnPlane.x, pointOnPlane.y, pointOnPlane.z],
-        });
-        // ViewerAPI.fire(Events.SceneClicked, { point: pointOnPlane });
+        fire(Events.SceneClicked, { point: pointOnPlane });
       }
     },
     // eslint-disable-next-line react-hooks/exhaustive-deps
     []
   );
 
-  // // Setup camera controls monitoring
-  // useEffect(() => {
-  //   // Try to setup camera controls when available
-  //   const checkInterval = setInterval(() => {
-  //     if (cameraControlRef.current) {
-  //       console.log("Camera controls reference set successfully");
-  //       View.setCameraControlsRef(cameraControlRef);
+  // Setup camera controls monitoring
+  useEffect(() => {
+    // Try to setup camera controls when available
+    const checkInterval = setInterval(() => {
+      if (cameraControlRef.current) {
+        // Set camera controls reference to the ViewManager
+        viewManager.setCameraControlsRef(cameraControlRef);
+        
+        // Set initial view once camera controls are available
+        if (initialView) {
+          if (typeof initialView === 'function') {
+            // Function feature direct call
+            initialView();
+          } else {
+            // String feature with ViewManager
+            viewManager.setView(initialView);
+            // ViewManager handles the event firing internally
+          }
+        }
 
-  //       // Set initial view once camera controls are available
-  //       if (initialView) {
-  //         if (typeof initialView === 'function') {
-  //           // Function feature direct call
-  //           console.log('Setting initial view from function');
-  //           initialView();
-  //         } else {
-  //           // String feature with View.setView
-  //           console.log(`Setting initial view to: ${initialView}`);
-  //           View.setView(initialView);
-  //         }
-  //       }
+        clearInterval(checkInterval);
+      }
+    }, 100); // Check every 100ms
 
-  //       clearInterval(checkInterval);
-  //     }
-  //   }, 100); // Check every 100ms
-
-  //   // Cleanup interval when component unmounts
-  //   return () => clearInterval(checkInterval);
-  // }, [initialView]);
+    // Cleanup interval when component unmounts
+    return () => clearInterval(checkInterval);
+  }, [initialView, viewManager]);
 
   // Container stílus a felhasználói stílus és az alapértelmezett értékek kombinálásával
 

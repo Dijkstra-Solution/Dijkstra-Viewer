@@ -9,5 +9,9 @@ export * from "./viewerapi/ViewerAPI";
 export * from "./viewerapi/AEntity";
 export * from "./viewerapi/APrimitive";
 export * from "./viewerapi/Polygon";
-export * from "./viewerapi/View";
+export * from "./viewer/hooks/useViewer"
+
+export { BaseView } from "./viewer/views/BaseView";
+export type { ViewSettings } from "./viewer/views/BaseView";
+export { PerspectiveView, TopView, ParallelView } from "./viewer/views/StandardViews";
 

@@ -1,6 +1,7 @@
 import { EventPayloads } from "@/viewerapi/Events";
 import { ViewerActions } from "./ViewerActions";
 import { BufferGeometry } from "three";
+import { ViewManager } from "./views/ViewManager";
 
 export type ViewerRef = {
   on: <T extends keyof EventPayloads>(
@@ -17,4 +18,5 @@ export type ViewerRef = {
   ) => void;
   actions: ViewerActions;
   mergedGeometry: BufferGeometry;
+  viewManager: ViewManager;
 };

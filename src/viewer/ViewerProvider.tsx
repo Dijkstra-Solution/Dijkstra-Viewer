@@ -6,6 +6,7 @@ import { DTOEntity } from "@/viewerapi/dto/DTOEntity";
 import { useCallback, useMemo, useReducer } from "react";
 import { BufferGeometryUtils } from "three/examples/jsm/Addons.js";
 import { BufferGeometry } from "three";
+import { ViewManager } from "./views/ViewManager";
 
 type State = {
   byId: Map<string, DTOEntity>;
@@ -59,6 +60,7 @@ export function ViewerProvider({ children }: { children: React.ReactNode }) {
   const selectPoints = useCallback(
     (count: number, callback: (pts: number[]) => void) => {
       fire(Events.StatusMessage, { message: `Select ${count} Points` });
+      callback([]);
     },
     [fire]
   );
@@ -67,8 +69,6 @@ export function ViewerProvider({ children }: { children: React.ReactNode }) {
     const geoms = Array.from(state.byId.values()).map((e) =>
       e.geometry(state.rev)
     );
-    console.log(state.rev);
-    console.log(state.byId);
     if (geoms.length == 0) return new BufferGeometry();
     return BufferGeometryUtils.mergeGeometries(geoms);
   }, [state.rev]);
@@ -84,9 +84,14 @@ export function ViewerProvider({ children }: { children: React.ReactNode }) {
   );
   //#endregion
 
+  // Create ViewManager instance
+  const viewManager = useMemo(() => {
+    return new ViewManager(fire);
+  }, [fire]);
+
   const api = useMemo<ViewerRef>(
-    () => ({ on, off, fire, actions, mergedGeometry }),
-    [on, off, fire, actions, mergedGeometry]
+    () => ({ on, off, fire, actions, mergedGeometry, viewManager }),
+    [on, off, fire, actions, mergedGeometry, viewManager]
   );
   return (
     <ViewerContext.Provider value={api}>{children}</ViewerContext.Provider>

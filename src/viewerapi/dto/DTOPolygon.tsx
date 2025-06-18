@@ -1,6 +1,6 @@
 import { ReactNode } from "react";
 import { DTOEntity } from "./DTOEntity";
-import { Shape, ShapeGeometry } from "three";
+import { Float32BufferAttribute, Shape, ShapeGeometry } from "three";
 import { BufferGeometry } from "three/webgpu";
 
 export class DTOPolygon extends DTOEntity {
@@ -36,7 +36,7 @@ export class DTOPolygon extends DTOEntity {
     }
     shape.closePath();
     const geometry = new ShapeGeometry(shape) as BufferGeometry;
-    geometry.setAttribute("color", new THREE.Float32BufferAttribute([1, 1, 1], 3));
+    geometry.setAttribute("color", new Float32BufferAttribute([1, 1, 1], 3));
 
     return geometry;
   }
