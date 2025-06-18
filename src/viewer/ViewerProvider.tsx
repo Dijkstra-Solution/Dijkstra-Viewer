@@ -42,7 +42,10 @@ function reducer(state: State, action: GeometryAction): State {
 }
 export function ViewerProvider({ children }: { children: React.ReactNode }) {
   const { on, off, fire } = useEventEmitter();
-  const [state, dispatch] = useReducer(reducer, { byId: new Map(), rev: 0 });
+  const [state, dispatch] = useReducer(reducer, {
+    byId: new Map<string, DTOEntity>(),
+    rev: 0,
+  });
 
   //#region ViewerActions
   const addEntity = useCallback((entity: DTOEntity) => {
@@ -59,19 +62,31 @@ export function ViewerProvider({ children }: { children: React.ReactNode }) {
 
   const selectPoints = useCallback(
     (count: number, callback: (pts: number[]) => void) => {
-      fire(Events.StatusMessage, { message: `Select ${count} Points` });
-      callback([]);
+      const collectedPoints: number[][] = [];
+      const clickHandler: (payload: { point: number[] }) => void = (payload: {
+        point: number[];
+      }) => {
+        collectedPoints.push(payload.point);
+        if (collectedPoints.length >= count) {
+          if (clickHandler) off(Events.SceneClicked, clickHandler);
+          const flatPoints = collectedPoints.flat();
+          callback(flatPoints);
+        }
+      };
+      on(Events.SceneClicked, clickHandler);
+      return () => {
+        if (clickHandler) off(Events.SceneClicked, clickHandler);
+      };
     },
-    [fire]
+    [on, off]
   );
 
   const mergedGeometry = useMemo(() => {
-    const geoms = Array.from(state.byId.values()).map((e) =>
-      e.geometry(state.rev)
-    );
-    if (geoms.length == 0) return new BufferGeometry();
-    return BufferGeometryUtils.mergeGeometries(geoms);
-  }, [state.rev]);
+    const entities = Array.from(state.byId.values());
+    if (entities.length == 0) return new BufferGeometry();
+    const geoms = entities.map((e) => e.geometry());
+    return BufferGeometryUtils.mergeGeometries(geoms) ?? new BufferGeometry();
+  }, [state.byId]);
 
   const actions = useMemo(
     () => ({

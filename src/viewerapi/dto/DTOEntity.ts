@@ -1,4 +1,3 @@
-import { ReactNode } from "react";
 import { BufferGeometry } from "three";
 
 export abstract class DTOEntity {
@@ -6,15 +5,21 @@ export abstract class DTOEntity {
   abstract readonly type: string;
 
   #rev = 0;
+  #builtRev = -1;
   #cachedGeometry?: BufferGeometry;
 
   constructor(guid: string) {
     this.guid = guid;
   }
-  abstract render(): ReactNode;
-  geometry(rev: number): BufferGeometry {
-    if (rev != this.#rev) {
-      this.#rev = rev;
+
+  invalidate() {
+    this.#rev++;
+  }
+  //TODO - use functional tracking
+  geometry(): BufferGeometry {
+    if (this.#rev != this.#builtRev) {
+      console.log("Recalculated", this.guid);
+      this.#builtRev = this.#rev;
       this.#cachedGeometry = this.buildGeometry();
     }
     return this.#cachedGeometry!;

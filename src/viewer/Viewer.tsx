@@ -1,10 +1,11 @@
 import { Canvas } from "@react-three/fiber";
 import { CameraControls } from "@react-three/drei";
-import { useCallback, useEffect, useRef } from "react";
+import { useCallback, useEffect, useMemo, useRef } from "react";
 import * as THREE from "three";
 import { Events, EventType, ViewType } from "../viewerapi/Events";
 import { useViewer } from "./hooks/useViewer";
 import { EventHandlerMap } from "./EventHandlerMap";
+import { View } from "@/viewerapi/View";
 
 interface ViewerProps {
   eventHandlers?: EventHandlerMap;
@@ -18,7 +19,13 @@ function Viewer({
   initialView = "perspective",
   style,
 }: ViewerProps) {
-  const { on, off, fire, mergedGeometry, viewManager } = useViewer();
+  const { on, off, fire, mergedGeometry } = useViewer();
+
+  const material = useMemo(() => {
+    return new THREE.MeshBasicMaterial({
+      vertexColors: true,
+    });
+  }, []);
 
   useEffect(() => {
     Object.entries(eventHandlers ?? {}).forEach(([event, handler]) => {
@@ -32,7 +39,6 @@ function Viewer({
     };
   }, [on, off, eventHandlers]);
 
-  // const ViewerAPI = client.ViewerAPI;
   const cameraControlRef = useRef<CameraControls | null>(null);
 
   const three = useRef<{
@@ -44,31 +50,43 @@ function Viewer({
 
   const handleClick = useCallback(
     (event: React.PointerEvent<HTMLDivElement>) => {
-      console.log("click");
-      const ctx = three.current;
-      if (!ctx) {
-        return;
-      }
-      const { scene, camera, raycaster, size } = ctx;
-      const mouse = new THREE.Vector2();
+      if (event.button == 0) {
+        console.log("click");
+        const ctx = three.current;
+        if (!ctx) {
+          return;
+        }
+        const { scene, camera, raycaster, size } = ctx;
+        const mouse = new THREE.Vector2();
 
-      mouse.x = (event.clientX / size.width) * 2 - 1;
-      mouse.y = -(event.clientY / size.height) * 2 + 1;
+        mouse.x = (event.clientX / size.width) * 2 - 1;
+        mouse.y = -(event.clientY / size.height) * 2 + 1;
 
-      raycaster.setFromCamera(mouse, camera);
-      const intersects = raycaster.intersectObjects(scene.children);
-      if (intersects.length > 0) {
-        const guid = intersects[0].object.userData.guid ?? "jej";
-        fire(Events.EntitySelected, { guid });
-      }
+        raycaster.setFromCamera(mouse, camera);
+        const intersects = raycaster.intersectObjects(scene.children);
+        if (intersects.length > 0) {
+          // const guid = intersects[0].object.userData.guid ?? "jej";
+          console.log(intersects[0]);
+          fire(Events.SceneClicked, {
+            point: [
+              intersects[0].point.x,
+              intersects[0].point.y,
+              intersects[0].point.z,
+            ],
+          });
+          return;
+        }
 
-      const pointOnPlane = raycaster.ray.intersectPlane(
-        new THREE.Plane(new THREE.Vector3(0, 1, 0), 0),
-        new THREE.Vector3()
-      );
+        const pointOnPlane = raycaster.ray.intersectPlane(
+          new THREE.Plane(new THREE.Vector3(0, 1, 0), 0),
+          new THREE.Vector3()
+        );
 
-      if (pointOnPlane) {
-        fire(Events.SceneClicked, { point: pointOnPlane });
+        if (pointOnPlane) {
+          fire(Events.SceneClicked, {
+            point: [pointOnPlane.x, pointOnPlane.y, pointOnPlane.z],
+          });
+        }
       }
     },
     // eslint-disable-next-line react-hooks/exhaustive-deps
@@ -111,6 +129,8 @@ function Viewer({
     margin: "10px",
     flex: 1,
   };
+
+  console.log(material);
   return (
     <div style={containerStyles}>
       <Canvas
@@ -125,9 +145,9 @@ function Viewer({
         }}
         onPointerUp={handleClick}
       >
-        <mesh geometry={mergedGeometry}>
-          <meshStandardMaterial />
-        </mesh>
+        <scene>
+          <mesh geometry={mergedGeometry} material={material}></mesh>
+        </scene>
 
         <CameraControls ref={cameraControlRef} />
         <gridHelper raycast={() => {}} />
