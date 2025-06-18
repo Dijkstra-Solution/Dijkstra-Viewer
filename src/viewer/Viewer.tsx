@@ -10,10 +10,14 @@ interface ViewerProps {
   eventHandlers?: EventHandlerMap;
   initialView?: ViewType | (() => void);
   style?: React.CSSProperties; // Stílusok a container elemhez
-  className?: string;         // CSS osztály a container elemhez
+  className?: string; // CSS osztály a container elemhez
 }
 
-function Viewer({ eventHandlers, initialView = "perspective" }: ViewerProps) {
+function Viewer({
+  eventHandlers,
+  initialView = "perspective",
+  style,
+}: ViewerProps) {
   const { on, off, fire, actions, mergedGeometry } = useViewer();
 
   useEffect(() => {
@@ -30,7 +34,6 @@ function Viewer({ eventHandlers, initialView = "perspective" }: ViewerProps) {
 
   // const ViewerAPI = client.ViewerAPI;
   const cameraControlRef = useRef<CameraControls | null>(null);
-  const { on, off, fire } = useViewer();
 
   const three = useRef<{
     scene: THREE.Scene;
@@ -75,15 +78,6 @@ function Viewer({ eventHandlers, initialView = "perspective" }: ViewerProps) {
     []
   );
 
-  // useEffect(() => {
-  //   const regen = (payload: { geometry: THREE.BufferGeometry }) => {
-  //     setGeometry(payload.geometry);
-  //   };
-
-    on(Events.SceneUpdated, regen);
-    return () => off(Events.SceneUpdated, regen);
-  }, );
-
   // // Setup camera controls monitoring
   // useEffect(() => {
   //   // Try to setup camera controls when available
@@ -114,11 +108,12 @@ function Viewer({ eventHandlers, initialView = "perspective" }: ViewerProps) {
   // }, [initialView]);
 
   // Container stílus a felhasználói stílus és az alapértelmezett értékek kombinálásával
+
   const containerStyles: React.CSSProperties = {
     ...style,
-    position: 'relative',
-    margin:'10px',
-    flex:1
+    position: "relative",
+    margin: "10px",
+    flex: 1,
   };
   return (
     <div style={containerStyles}>

@@ -5,7 +5,6 @@ import { ViewerRef } from "./ViewerRef";
 import { DTOEntity } from "@/viewerapi/dto/DTOEntity";
 import { useCallback, useMemo, useReducer } from "react";
 import { BufferGeometryUtils } from "three/examples/jsm/Addons.js";
-import { mergeBufferGeometries } from "three/examples/jsm/utils/BufferGeometryUtils";
 import { BufferGeometry } from "three";
 
 type State = {
