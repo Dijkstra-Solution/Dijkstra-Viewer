@@ -1,4 +1,4 @@
-import { BufferGeometry, Vector3 } from "three";
+import { BufferGeometry } from "three";
 
 export type EventType = (typeof Events)[keyof typeof Events];
 
@@ -17,8 +17,9 @@ export const Events = {
 export type ViewType = "top" | "parallel" | "perspective";
 
 export type EventPayloads = {
+  //TODO - send them as json object or raw data?
   [Events.EntitySelected]: { guid: string };
-  [Events.SceneClicked]: { point: Vector3 }; //TODO
+  [Events.SceneClicked]: { point: number[] }; //TODO
   [Events.SceneUpdated]: { geometry: BufferGeometry };
   [Events.StatusMessage]: { message: string };
   [Events.ViewChanged]: { view: ViewType };

@@ -1,20 +1,32 @@
 import { Canvas } from "@react-three/fiber";
 import { CameraControls } from "@react-three/drei";
-import { useCallback, useEffect, useRef, useState } from "react";
+import { useCallback, useEffect, useRef } from "react";
 import * as THREE from "three";
-import { Events, ViewType } from "../viewerapi/Events";
-import { ClientBase } from "@/client/ClientBase";
-import { View } from "../viewerapi/View";
+import { Events, EventType, ViewType } from "../viewerapi/Events";
+import { useViewer } from "./hooks/useViewer";
+import { EventHandlerMap } from "./EventHandlerMap";
 
 interface ViewerProps {
-  client: ClientBase;
+  eventHandlers?: EventHandlerMap;
   initialView?: ViewType | (() => void);
 }
 
-function Viewer({ client, initialView = 'perspective' }: ViewerProps) {
-  const ViewerAPI = client.ViewerAPI;
-  const meshRef = useRef<THREE.Mesh>(null);
-  const [geometry, setGeometry] = useState<THREE.BufferGeometry>();
+function Viewer({ eventHandlers, initialView = "perspective" }: ViewerProps) {
+  const { on, off, fire, actions, mergedGeometry } = useViewer();
+
+  useEffect(() => {
+    Object.entries(eventHandlers ?? {}).forEach(([event, handler]) => {
+      on(event as EventType, handler);
+    });
+
+    return () => {
+      Object.entries(eventHandlers ?? {}).forEach(([event, handler]) => {
+        off(event as EventType, handler);
+      });
+    };
+  }, [on, off, eventHandlers]);
+
+  // const ViewerAPI = client.ViewerAPI;
   const cameraControlRef = useRef<CameraControls | null>(null);
 
   const three = useRef<{
@@ -26,9 +38,9 @@ function Viewer({ client, initialView = 'perspective' }: ViewerProps) {
 
   const handleClick = useCallback(
     (event: React.PointerEvent<HTMLDivElement>) => {
+      console.log("click");
       const ctx = three.current;
       if (!ctx) {
-        console.log("No context! :(");
         return;
       }
       const { scene, camera, raycaster, size } = ctx;
@@ -39,10 +51,11 @@ function Viewer({ client, initialView = 'perspective' }: ViewerProps) {
 
       raycaster.setFromCamera(mouse, camera);
       const intersects = raycaster.intersectObjects(scene.children);
-      console.log(intersects);
       if (intersects.length > 0) {
         const guid = intersects[0].object.userData.guid ?? "jej";
-        ViewerAPI.fire(Events.EntitySelected, { guid });
+        console.log("Event fired");
+        fire(Events.EntitySelected, { guid });
+        // ViewerAPI.fire(Events.EntitySelected, { guid });
       }
 
       const pointOnPlane = raycaster.ray.intersectPlane(
@@ -51,54 +64,57 @@ function Viewer({ client, initialView = 'perspective' }: ViewerProps) {
       );
 
       if (pointOnPlane) {
-        ViewerAPI.fire(Events.SceneClicked, { point: pointOnPlane });
+        fire(Events.SceneClicked, {
+          point: [pointOnPlane.x, pointOnPlane.y, pointOnPlane.z],
+        });
+        // ViewerAPI.fire(Events.SceneClicked, { point: pointOnPlane });
       }
     },
     []
   );
 
-  useEffect(() => {
-    const regen = (payload: { geometry: THREE.BufferGeometry }) => {
-      setGeometry(payload.geometry);
-    };
+  // useEffect(() => {
+  //   const regen = (payload: { geometry: THREE.BufferGeometry }) => {
+  //     setGeometry(payload.geometry);
+  //   };
 
-    ViewerAPI.on(Events.SceneUpdated, regen);
-    return () => ViewerAPI.off(Events.SceneUpdated, regen);
-  }, [ViewerAPI]);
+  //   ViewerAPI.on(Events.SceneUpdated, regen);
+  //   return () => ViewerAPI.off(Events.SceneUpdated, regen);
+  // }, [ViewerAPI]);
 
-  // Init View Module with ViewerApi
-  useEffect(() => {
-    View.initialize(ViewerAPI);
-  }, [ViewerAPI]);
+  // // Init View Module with ViewerApi
+  // useEffect(() => {
+  //   View.initialize(ViewerAPI);
+  // }, [ViewerAPI]);
 
-  // Setup camera controls monitoring
-  useEffect(() => {
-    // Try to setup camera controls when available
-    const checkInterval = setInterval(() => {
-      if (cameraControlRef.current) {
-        console.log("Camera controls reference set successfully");
-        View.setCameraControlsRef(cameraControlRef);
-        
-        // Set initial view once camera controls are available
-        if (initialView) {
-          if (typeof initialView === 'function') {
-            // Function feature direct call
-            console.log('Setting initial view from function');
-            initialView();
-          } else {
-            // String feature with View.setView
-            console.log(`Setting initial view to: ${initialView}`);
-            View.setView(initialView);
-          }
-        }
-        
-        clearInterval(checkInterval);
-      }
-    }, 100); // Check every 100ms
-    
-    // Cleanup interval when component unmounts
-    return () => clearInterval(checkInterval);
-  }, [initialView]);
+  // // Setup camera controls monitoring
+  // useEffect(() => {
+  //   // Try to setup camera controls when available
+  //   const checkInterval = setInterval(() => {
+  //     if (cameraControlRef.current) {
+  //       console.log("Camera controls reference set successfully");
+  //       View.setCameraControlsRef(cameraControlRef);
+
+  //       // Set initial view once camera controls are available
+  //       if (initialView) {
+  //         if (typeof initialView === 'function') {
+  //           // Function feature direct call
+  //           console.log('Setting initial view from function');
+  //           initialView();
+  //         } else {
+  //           // String feature with View.setView
+  //           console.log(`Setting initial view to: ${initialView}`);
+  //           View.setView(initialView);
+  //         }
+  //       }
+
+  //       clearInterval(checkInterval);
+  //     }
+  //   }, 100); // Check every 100ms
+
+  //   // Cleanup interval when component unmounts
+  //   return () => clearInterval(checkInterval);
+  // }, [initialView]);
 
   return (
     <div style={{ width: "100vw", height: "100vh" }}>
@@ -115,15 +131,12 @@ function Viewer({ client, initialView = 'perspective' }: ViewerProps) {
         }}
         onPointerUp={handleClick}
       >
+        <mesh geometry={mergedGeometry}>
+          <meshStandardMaterial />
+        </mesh>
+
         <CameraControls ref={cameraControlRef} />
         <gridHelper raycast={() => {}} />
-        <scene>
-          <mesh ref={meshRef} geometry={geometry ?? undefined} />
-          {/* <mesh>
-            <boxGeometry args={[1, 1, 1]} />
-            <meshNormalMaterial />
-          </mesh> */}
-        </scene>
       </Canvas>
     </div>
   );
