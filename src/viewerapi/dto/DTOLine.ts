@@ -1,7 +1,5 @@
-import { ReactNode } from "react";
 import { DTOEntity } from "./DTOEntity";
-import { Line } from "@react-three/drei";
-import { BufferGeometry, Vector3 } from "three/webgpu";
+import { BufferGeometry, Vector3 } from "three";
 import { LineGeometry } from "three/examples/jsm/Addons.js";
 
 export class DTOLine extends DTOEntity {
@@ -30,24 +28,5 @@ export class DTOLine extends DTOEntity {
       new Vector3(this.start.x, this.start.y, this.start.z),
       new Vector3(this.end.x, this.end.y, this.end.z),
     ]) as BufferGeometry;
-  }
-
-  //TODO - obsolete
-  render(): ReactNode {
-    const points = [
-      this.start.x,
-      this.start.y,
-      this.start.z,
-      this.end.x,
-      this.end.y,
-      this.end.z,
-    ];
-    return (
-      <Line
-        points={points}
-        color={this.color ?? "white"}
-        linewidth={this.width ?? 1}
-      />
-    );
   }
 }

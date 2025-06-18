@@ -3,11 +3,13 @@ export * from "./viewer/ViewerProvider";
 export * from "./viewer/Viewer";
 
 export * from "./viewerapi/Events";
-export * from "./client/ClientBase";
 
-export * from "./viewerapi/ViewerAPI";
-export * from "./viewerapi/AEntity";
+export * from "./viewerapi/dto/DTOEntity";
+export * from "./viewerapi/dto/DTOPolygon";
+export * from "./viewerapi/dto/DTOLine";
+
 export * from "./viewerapi/APrimitive";
 export * from "./viewerapi/Polygon";
 export * from "./viewerapi/View";
 
+export * from "./viewer/hooks/useViewer";
