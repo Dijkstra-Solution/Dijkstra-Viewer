@@ -12,7 +12,7 @@ export class PerspectiveView extends BaseView {
     return {
       position: new Vector3(5, 5, 5),
       target: new Vector3(0, 0, 0),
-      up: new Vector3(0, 1, 0)
+      up: new Vector3(0, 1, 0),
     };
   }
 }
@@ -33,8 +33,7 @@ export class TopView extends BaseView {
         // Restrict rotation in top view
         azimuthRotateSpeed: 0,
         polarRotateSpeed: 0,
-        
-      }
+      },
     };
   }
 }
@@ -50,7 +49,7 @@ export class ParallelView extends BaseView {
     return {
       position: new Vector3(10, 5, 0),
       target: new Vector3(0, 0, 0),
-      up: new Vector3(0, 1, 0)
+      up: new Vector3(0, 1, 0),
     };
   }
 }

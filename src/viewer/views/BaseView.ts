@@ -24,17 +24,17 @@ export abstract class BaseView {
    * Unique identifier for the view
    */
   abstract readonly viewId: string;
-  
+
   /**
    * Display name for the view
    */
   abstract readonly displayName: string;
-  
+
   /**
    * Get view settings for camera positioning
    */
   abstract getViewSettings(): ViewSettings;
-  
+
   /**
    * Apply the view to the camera controls
    * @param controls Camera controls to apply the view to
@@ -42,7 +42,7 @@ export abstract class BaseView {
    */
   apply(controls: CameraControls, animate: boolean = false): void {
     const settings = this.getViewSettings();
-    
+
     // Set camera position and target
     controls.setLookAt(
       settings.position.x,
@@ -53,15 +53,18 @@ export abstract class BaseView {
       settings.target.z,
       animate
     );
-    
+
     // Apply constraint settings if provided
     if (settings.constraints) {
       const c = settings.constraints;
-      if (c.azimuthRotateSpeed !== undefined) controls.azimuthRotateSpeed = c.azimuthRotateSpeed;
-      if (c.polarRotateSpeed !== undefined) controls.polarRotateSpeed = c.polarRotateSpeed;
-      if (c.truckSpeed !== undefined) controls.truckSpeed = c.truckSpeed; 
+      if (c.azimuthRotateSpeed !== undefined)
+        controls.azimuthRotateSpeed = c.azimuthRotateSpeed;
+      if (c.polarRotateSpeed !== undefined)
+        controls.polarRotateSpeed = c.polarRotateSpeed;
+      if (c.truckSpeed !== undefined) controls.truckSpeed = c.truckSpeed;
       if (c.dollySpeed !== undefined) controls.dollySpeed = c.dollySpeed;
-      if (c.draggingSmoothTime !== undefined) controls.draggingSmoothTime = c.draggingSmoothTime;
+      if (c.draggingSmoothTime !== undefined)
+        controls.draggingSmoothTime = c.draggingSmoothTime;
       if (c.smoothTime !== undefined) controls.smoothTime = c.smoothTime;
     } else {
       // Default to normal control settings

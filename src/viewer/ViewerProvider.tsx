@@ -60,23 +60,37 @@ export function ViewerProvider({ children }: { children: React.ReactNode }) {
     dispatch({ type: "clear" });
   }, []);
 
+  //TODO - cancellation logic
   const selectPoints = useCallback(
-    (count: number, callback: (pts: number[]) => void) => {
-      const collectedPoints: number[][] = [];
-      const clickHandler: (payload: { point: number[] }) => void = (payload: {
-        point: number[];
-      }) => {
-        collectedPoints.push(payload.point);
-        if (collectedPoints.length >= count) {
-          if (clickHandler) off(Events.SceneClicked, clickHandler);
-          const flatPoints = collectedPoints.flat();
-          callback(flatPoints);
+    (
+      count: number,
+      callback: (pts: number[]) => void,
+      signal?: AbortSignal
+    ) => {
+      const points: number[][] = [];
+
+      const clickHandler = ({ point }: { point: number[] }) => {
+        points.push(point);
+        if (points.length == count) {
+          cleanup();
+          callback(points.flat());
         }
       };
-      on(Events.SceneClicked, clickHandler);
-      return () => {
-        if (clickHandler) off(Events.SceneClicked, clickHandler);
+
+      const onAbort = () => {
+        cleanup();
+        callback([]);
       };
+
+      const cleanup = () => {
+        off(Events.SceneClicked, clickHandler);
+        signal?.removeEventListener("abort", onAbort);
+      };
+
+      on(Events.SceneClicked, clickHandler);
+      signal?.addEventListener("abort", onAbort);
+
+      return cleanup;
     },
     [on, off]
   );

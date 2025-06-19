@@ -5,7 +5,6 @@ import * as THREE from "three";
 import { Events, EventType, ViewType } from "../viewerapi/Events";
 import { useViewer } from "./hooks/useViewer";
 import { EventHandlerMap } from "./EventHandlerMap";
-import { View } from "@/viewerapi/View";
 
 interface ViewerProps {
   eventHandlers?: EventHandlerMap;
@@ -19,7 +18,7 @@ function Viewer({
   initialView = "perspective",
   style,
 }: ViewerProps) {
-  const { on, off, fire, mergedGeometry } = useViewer();
+  const { on, off, fire, mergedGeometry, viewManager } = useViewer();
 
   const material = useMemo(() => {
     return new THREE.MeshBasicMaterial({
@@ -27,6 +26,7 @@ function Viewer({
     });
   }, []);
 
+  //#region Event Handler Registration on Mount
   useEffect(() => {
     Object.entries(eventHandlers ?? {}).forEach(([event, handler]) => {
       on(event as EventType, handler);
@@ -38,6 +38,7 @@ function Viewer({
       });
     };
   }, [on, off, eventHandlers]);
+  //#endregion
 
   const cameraControlRef = useRef<CameraControls | null>(null);
 
@@ -51,7 +52,6 @@ function Viewer({
   const handleClick = useCallback(
     (event: React.PointerEvent<HTMLDivElement>) => {
       if (event.button == 0) {
-        console.log("click");
         const ctx = three.current;
         if (!ctx) {
           return;
@@ -93,6 +93,25 @@ function Viewer({
     []
   );
 
+  const handleMouseMove = useCallback(
+    (event: React.PointerEvent<HTMLDivElement>) => {
+      const ctx = three.current;
+      if (!ctx) {
+        return;
+      }
+      const { camera, raycaster, scene, size } = ctx;
+      const mouse = new THREE.Vector2();
+
+      mouse.x = (event.clientX / size.width) * 2 - 1;
+      mouse.y = -(event.clientY / size.height) * 2 + 1;
+
+      raycaster.setFromCamera(mouse, camera);
+      const intersects = raycaster.intersectObjects(scene.children);
+      console.log(intersects);
+    },
+    []
+  );
+
   // Setup camera controls monitoring
   useEffect(() => {
     // Try to setup camera controls when available
@@ -100,10 +119,10 @@ function Viewer({
       if (cameraControlRef.current) {
         // Set camera controls reference to the ViewManager
         viewManager.setCameraControlsRef(cameraControlRef);
-        
+
         // Set initial view once camera controls are available
         if (initialView) {
-          if (typeof initialView === 'function') {
+          if (typeof initialView === "function") {
             // Function feature direct call
             initialView();
           } else {
@@ -124,13 +143,12 @@ function Viewer({
   // Container stílus a felhasználói stílus és az alapértelmezett értékek kombinálásával
 
   const containerStyles: React.CSSProperties = {
-    ...style,
     position: "relative",
     margin: "10px",
     flex: 1,
+    ...style,
   };
 
-  console.log(material);
   return (
     <div style={containerStyles}>
       <Canvas
@@ -144,6 +162,7 @@ function Viewer({
           };
         }}
         onPointerUp={handleClick}
+        onMouseMove={handleMouseMove}
       >
         <scene>
           <mesh geometry={mergedGeometry} material={material}></mesh>
