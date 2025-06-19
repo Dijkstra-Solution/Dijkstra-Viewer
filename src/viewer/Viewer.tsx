@@ -5,7 +5,6 @@ import * as THREE from "three";
 import { Events, EventType, ViewType } from "../viewerapi/Events";
 import { useViewer } from "./hooks/useViewer";
 import { EventHandlerMap } from "./EventHandlerMap";
-import { View } from "@/viewerapi/View";
 
 interface ViewerProps {
   eventHandlers?: EventHandlerMap;
@@ -19,7 +18,7 @@ function Viewer({
   initialView = "perspective",
   style,
 }: ViewerProps) {
-  const { on, off, fire, mergedGeometry } = useViewer();
+  const { on, off, fire, mergedGeometry, viewManager } = useViewer();
 
   const material = useMemo(() => {
     return new THREE.MeshBasicMaterial({
@@ -150,7 +149,10 @@ function Viewer({
         </scene>
 
         <CameraControls ref={cameraControlRef} />
-        <gridHelper raycast={() => {}} />
+        <gridHelper 
+          args={[20, 20, '#888888', '#444444']}
+          raycast={() => {}}
+        />
       </Canvas>
     </div>
   );

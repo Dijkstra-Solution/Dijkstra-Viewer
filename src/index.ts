@@ -14,6 +14,6 @@ export * from "./viewer/hooks/useViewer"
 
 export { BaseView } from "./viewer/views/BaseView";
 export type { ViewSettings } from "./viewer/views/BaseView";
-export { PerspectiveView, TopView, ParallelView } from "./viewer/views/StandardViews";
+export { PerspectiveView, TopView } from "./viewer/views/StandardViews";
 
 export * from "./viewer/hooks/useViewer";

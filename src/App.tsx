@@ -4,8 +4,6 @@ import { ViewerProvider } from "./viewer/ViewerProvider";
 import { Viewer } from "./viewer/Viewer";
 import { useViewer } from "./viewer/hooks/useViewer";
 import { BaseView, ViewSettings } from "./viewer/views/BaseView";
-import { Vector3 } from "three";
-
 
 
 // Egyszerű egyedi nézet, amit a kliens könnyen létrehozhat
@@ -15,9 +13,9 @@ class CustomClientView extends BaseView {
 
   getViewSettings(): ViewSettings {
     return {
-      position: new Vector3(0, 3, 10), // Szemből nézzük
-      target: new Vector3(0, 0, 0),
-      up: new Vector3(0, 1, 0),
+      position: [0, 3, 10], // Szemből nézzük
+      target: [0, 0, 0],
+      up: [0, 1, 0],
       constraints:{
         smoothTime: 1
       }
@@ -33,6 +31,7 @@ function AppContent() {
   useEffect(() => {
     // Regisztráljuk az egyedi nézetet
     viewManager.registerView(new CustomClientView());
+    console.log("asd")
   }, [viewManager]);
 
   // Nézet váltása
@@ -43,7 +42,6 @@ function AppContent() {
 
   return (
     <div style={{ height: "calc(100vh - 40px)" }}>
-      <div style={{ padding: '10px', backgroundColor: '#f8f8f8', display: 'flex' }}>
         <button 
           onClick={() => switchView("perspective")}
         >
@@ -59,10 +57,8 @@ function AppContent() {
         >
           Egyedi nézet
         </button>
-      </div>
-      <div style={{ height: 'calc(100% - 60px)', border: '1px solid #ccc' }}>
+
         <Viewer style={{ width: '100%', height: '100%' }} initialView="perspective" />
-      </div>
     </div>
   );
 }
