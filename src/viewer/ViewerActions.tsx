@@ -7,7 +7,11 @@ function unbound() {
 export const viewerActions = {
   SelectPoints: unbound as (
     count: number,
-    callback: (points: number[], normals: number[]) => void
+    callback: (data: {
+      guids: string[];
+      points: number[];
+      normals: number[];
+    }) => void
   ) => void,
 
   AddEntity: unbound as (entity: DTOEntity) => void,

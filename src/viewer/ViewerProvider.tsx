@@ -64,30 +64,54 @@ export function ViewerProvider({ children }: { children: React.ReactNode }) {
   const selectPoints = useCallback(
     (
       count: number,
-      callback: (points: number[], normals: number[]) => void,
+      callback: (data: {
+        guids: string[];
+        points: number[];
+        normals: number[];
+      }) => void,
       signal?: AbortSignal
     ) => {
+      const guids: string[] = [];
       const points: number[][] = [];
       const normals: number[][] = [];
 
+      fire(Events.StatusMessage, {
+        message: `Pick ${count == 1 ? "a point" : count + " points"}!`,
+      });
+
       const clickHandler = ({
+        guid,
         point,
         normal,
       }: {
+        guid: string;
         point: number[];
         normal: number[];
       }) => {
+        guids.push(guid);
         points.push(point);
         normals.push(normal);
         if (points.length == count) {
           cleanup();
-          callback(points.flat(), normals.flat());
+          callback({
+            guids: guids,
+            points: points.flat(),
+            normals: normals.flat(),
+          });
+        } else {
+          fire(Events.StatusMessage, {
+            message: `Pick ${count} points! (${points.length} / ${count})`,
+          });
         }
       };
 
       const onAbort = () => {
         cleanup();
-        callback([], []);
+        callback({
+          guids: [],
+          points: [],
+          normals: [],
+        });
       };
 
       const cleanup = () => {
@@ -100,14 +124,31 @@ export function ViewerProvider({ children }: { children: React.ReactNode }) {
 
       return cleanup;
     },
-    [on, off]
+    [on, off, fire]
   );
 
   const mergedGeometry = useMemo(() => {
     const entities = Array.from(state.byId.values());
     if (entities.length == 0) return new BufferGeometry();
     const geoms = entities.map((e) => e.geometry());
-    return BufferGeometryUtils.mergeGeometries(geoms) ?? new BufferGeometry();
+    const merged =
+      BufferGeometryUtils.mergeGeometries(geoms) ?? new BufferGeometry();
+
+    let offset = 0;
+    const faceMap: Record<number, string> = {};
+    entities.forEach((entity) => {
+      const geometry = entity.geometry();
+      const faces = geometry.index
+        ? geometry.index.count / 3
+        : geometry.attributes.position.count / 3;
+
+      for (let i = 0; i < faces; i++) {
+        faceMap[offset + i] = entity.guid;
+      }
+      offset += faces;
+    });
+    merged.userData.faceMap = faceMap;
+    return merged;
   }, [state.byId]);
 
   const actions = useMemo(

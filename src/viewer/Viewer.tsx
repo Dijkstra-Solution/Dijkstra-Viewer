@@ -1,6 +1,12 @@
 import { Canvas } from "@react-three/fiber";
 import { CameraControls } from "@react-three/drei";
-import { useCallback, useEffect, useMemo, useRef, useState } from "react";
+import React, {
+  useCallback,
+  useEffect,
+  useMemo,
+  useRef,
+  useState,
+} from "react";
 import * as THREE from "three";
 import { Events, EventType, ViewType } from "../viewerapi/Events";
 import { useViewer } from "./hooks/useViewer";
@@ -20,7 +26,46 @@ function Viewer({
 }: ViewerProps) {
   const { on, off, fire, mergedGeometry, viewManager } = useViewer();
 
-  //#region Intersection Handling
+  const cameraControlRef = useRef<CameraControls | null>(null);
+  const containerRef = useRef<HTMLDivElement>(null);
+
+  const [hoveredGUID, setHoveredGUID] = useState<string | null>(null);
+  const outlineSegments = useMemo<THREE.LineSegments | null>(() => {
+    if (!hoveredGUID || !mergedGeometry) return null;
+
+    const positionAttribute = mergedGeometry.attributes.position;
+    const indexArray = mergedGeometry.index;
+    const faceMap: Record<number, string> = mergedGeometry.userData.faceMap;
+    if (!indexArray || !positionAttribute) return null;
+
+    const edgeGeometryIndices: number[] = [];
+
+    for (let i = 0; i < indexArray.count / 3; i++) {
+      if (faceMap[i] === hoveredGUID) {
+        edgeGeometryIndices.push(
+          indexArray.array[i * 3],
+          indexArray.array[i * 3 + 1],
+          indexArray.array[i * 3 + 2]
+        );
+      }
+    }
+    const edgeGeometry = new THREE.BufferGeometry();
+    edgeGeometry.setAttribute("position", positionAttribute);
+    edgeGeometry.setIndex(edgeGeometryIndices);
+    edgeGeometry.computeVertexNormals();
+
+    const edges = new THREE.EdgesGeometry(edgeGeometry);
+    const lineSegmentsMaterial = new THREE.LineBasicMaterial({
+      color: "yellow",
+      linewidth: 2,
+    });
+
+    const lineSegments = new THREE.LineSegments(edges, lineSegmentsMaterial);
+    lineSegments.layers.set(1);
+    return lineSegments;
+  }, [hoveredGUID, mergedGeometry]);
+
+  //#region Sphere on Intersection
   const [intersectionPoint, setIntersectionPoint] =
     useState<THREE.Vector3 | null>(null);
   const intersectionSphereRef = useRef<THREE.Mesh>(null);
@@ -51,14 +96,25 @@ function Viewer({
   }, [on, off, eventHandlers]);
   //#endregion
 
-  const cameraControlRef = useRef<CameraControls | null>(null);
-
+  //TODO - refine this (useThree / put into separate component)
   const three = useRef<{
     scene: THREE.Scene;
     camera: THREE.PerspectiveCamera;
     raycaster: THREE.Raycaster;
-    size: { width: number; height: number };
   }>(null);
+
+  //#region Mouse Handling and Intersections
+  const getMouse = useCallback(
+    (event: React.PointerEvent) => {
+      const rect = containerRef.current?.getBoundingClientRect();
+      const mouse = new THREE.Vector2(
+        ((event.clientX - (rect?.left ?? 0)) / (rect?.width ?? 1)) * 2 - 1,
+        -((event.clientY - (rect?.top ?? 0)) / (rect?.height ?? 1)) * 2 + 1
+      );
+      return mouse;
+    },
+    [containerRef]
+  );
 
   const handleClick = useCallback(
     (event: React.PointerEvent<HTMLDivElement>) => {
@@ -67,16 +123,21 @@ function Viewer({
         if (!ctx) {
           return;
         }
-        const { scene, camera, raycaster, size } = ctx;
-        const mouse = new THREE.Vector2(
-          (event.clientX / size.width) * 2 - 1,
-          -(event.clientY / size.height) * 2 + 1
-        );
-
+        const { scene, camera, raycaster } = ctx;
+        const mouse = getMouse(event);
         raycaster.setFromCamera(mouse, camera);
         const intersects = raycaster.intersectObjects(scene.children);
         if (intersects.length > 0) {
+          let guid = undefined;
+          const ind = intersects[0].faceIndex;
+          if (ind != undefined && ind != null) {
+            guid = (intersects[0].object as THREE.Mesh).geometry.userData
+              .faceMap?.[ind];
+          }
+          setHoveredGUID(guid ?? null);
+
           fire(Events.SceneClicked, {
+            guid: guid,
             point: [
               intersects[0].point.x,
               intersects[0].point.y,
@@ -90,7 +151,7 @@ function Viewer({
           });
           return;
         }
-
+        setHoveredGUID(null);
         const pointOnPlane = raycaster.ray.intersectPlane(
           new THREE.Plane(new THREE.Vector3(0, 1, 0), 0),
           new THREE.Vector3()
@@ -104,8 +165,7 @@ function Viewer({
         }
       }
     },
-    // eslint-disable-next-line react-hooks/exhaustive-deps
-    []
+    [getMouse, fire]
   );
 
   const handleMouseMove = useCallback(
@@ -114,24 +174,25 @@ function Viewer({
       if (!ctx) {
         return;
       }
-      const { camera, raycaster, scene, size } = ctx;
-      const mouse = new THREE.Vector2(
-        (event.clientX / size.width) * 2 - 1,
-        -(event.clientY / size.height) * 2 + 1
-      );
-
+      const { camera, raycaster, scene } = ctx;
+      const mouse = getMouse(event);
       raycaster.layers.set(0);
       raycaster.firstHitOnly = false;
       raycaster.setFromCamera(mouse, camera);
       const intersects = raycaster.intersectObjects(scene.children);
       if (intersects.length > 0) {
+        if (intersects[0].object instanceof THREE.Mesh) {
+          //(intersects[0].object.geometry.userData.faceMap);
+          //TODO
+        }
         setIntersectionPoint(intersects[0].point);
       } else {
         setIntersectionPoint(null);
       }
     },
-    []
+    [getMouse]
   );
+  //#endregion
 
   // Setup camera controls monitoring
   useEffect(() => {
@@ -171,37 +232,38 @@ function Viewer({
   };
 
   return (
-    <div style={containerStyles}>
+    <div style={containerStyles} ref={containerRef}>
       <Canvas
         camera={{ position: [0, 0, 5] }}
-        onCreated={({ scene, camera, raycaster, size }) => {
+        onCreated={({ scene, camera, raycaster }) => {
           camera.layers.enableAll();
           three.current = {
             scene,
             camera: camera as THREE.PerspectiveCamera,
             raycaster,
-            size,
           };
         }}
         onPointerUp={handleClick}
         onMouseMove={handleMouseMove}
       >
-        <scene>
-          <mesh geometry={mergedGeometry} material={material}></mesh>
-          {intersectionPoint && (
-            <mesh
-              ref={intersectionSphereRef}
-              position={[
-                intersectionPoint.x,
-                intersectionPoint.y,
-                intersectionPoint.z,
-              ]}
-            >
-              <sphereGeometry args={[0.1, 16, 16]} />
-              <meshBasicMaterial color="red" />
-            </mesh>
-          )}
-        </scene>
+        {/* <scene> */}
+        <mesh geometry={mergedGeometry} material={material}></mesh>
+        {outlineSegments && <primitive object={outlineSegments} />}
+
+        {intersectionPoint && (
+          <mesh
+            ref={intersectionSphereRef}
+            position={[
+              intersectionPoint.x,
+              intersectionPoint.y,
+              intersectionPoint.z,
+            ]}
+          >
+            <sphereGeometry args={[0.1, 16, 16]} />
+            <meshBasicMaterial color="red" />
+          </mesh>
+        )}
+        {/* </scene> */}
 
         <CameraControls ref={cameraControlRef} />
         <gridHelper args={[20, 20, "#888888", "#444444"]} raycast={() => {}} />
