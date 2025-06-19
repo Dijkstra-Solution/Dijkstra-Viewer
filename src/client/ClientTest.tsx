@@ -5,6 +5,7 @@ import { ViewerProvider } from "@/viewer/ViewerProvider";
 import { DTOPolygon } from "@/viewerapi/dto/DTOPolygon";
 import { DTOComposite } from "@/viewerapi/dto/DTOComposite";
 import { generateUUID } from "three/src/math/MathUtils.js";
+import { useEffect } from "react";
 
 export function ClientTest() {
   return (
@@ -14,8 +15,9 @@ export function ClientTest() {
   );
 }
 
+
 function Wrapper() {
-  const { actions } = useViewer();
+  const { actions, views } = useViewer();
 
   const randomHex = () =>
     Math.floor(Math.random() * 0xffffff)
@@ -90,9 +92,23 @@ function Wrapper() {
     return composite;
   };
 
+  useEffect(() => {
+    actions.CreateView(
+      "client-view",
+      "Egyedi nézet",
+      {
+        position: [0, 3, 10], // Szemből nézzük
+        target: [0, 0, 0],
+        up: [0, 1, 0],
+        constraints: {
+          smoothTime: 1,
+        },
+      }
+    );
+  }, [actions]);
+
   return (
-    <div
-      style={{
+    <div style={{
         display: "flex",
         flexDirection: "column",
         height: "100vh",
@@ -109,6 +125,11 @@ function Wrapper() {
       >
         Create Box
       </button>
+      {views.getAllViews().map((view) => (
+        <button key={view.viewId} onClick={() => actions.SetView(view.viewId)}>
+          {view.displayName}
+        </button>
+      ))}
       <Viewer></Viewer>
     </div>
   );

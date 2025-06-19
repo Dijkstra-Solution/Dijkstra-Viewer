@@ -11,7 +11,7 @@ export class PerspectiveView extends BaseView {
     return {
       position: [5, 5, 5],
       target: [0, 0, 0],
-      up: [0, 1, 0]
+      up: [0, 1, 0],
     };
   }
 }

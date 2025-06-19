@@ -14,7 +14,6 @@ export const Events = {
   ViewCreated: "ViewCreated",
 } as const;
 
-export type ViewType = "top" | "parallel" | "perspective";
 
 export type EventPayloads = {
   //TODO - send them as json object or raw data?
@@ -22,9 +21,9 @@ export type EventPayloads = {
   [Events.SceneClicked]: { point: number[] };
   [Events.SceneUpdated]: { geometry: BufferGeometry };
   [Events.StatusMessage]: { message: string };
-  [Events.ViewChanged]: { view: ViewType };
+  [Events.ViewChanged]: { view: string };
   [Events.ViewerLoaded]: { viewer: string };
-  [Events.ViewDeleted]: { view: ViewType };
-  [Events.ViewResized]: { view: ViewType };
-  [Events.ViewCreated]: { view: ViewType };
+  [Events.ViewDeleted]: { view: string };
+  [Events.ViewResized]: { view: string };
+  [Events.ViewCreated]: { view: string };
 };
