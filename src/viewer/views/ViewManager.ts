@@ -1,7 +1,7 @@
 import { MutableRefObject } from "react";
 import { CameraControls } from "@react-three/drei";
 import { BaseView } from "./BaseView";
-import { PerspectiveView, TopView, ParallelView } from "./StandardViews";
+import { PerspectiveView, TopView } from "./StandardViews";
 import { Events, ViewType } from "@/viewerapi/Events";
 
 /**
@@ -23,7 +23,6 @@ export class ViewManager {
     // Register standard views
     this.registerView(new PerspectiveView());
     this.registerView(new TopView());
-    this.registerView(new ParallelView());
   }
 
   /**
@@ -137,14 +136,6 @@ export class ViewManager {
    */
   topView(animate: boolean = false): boolean {
     return this.setView("top", animate);
-  }
-
-  /**
-   * Convenience method for setting parallel view
-   * @param animate Whether to animate the transition
-   */
-  parallelView(animate: boolean = false): boolean {
-    return this.setView("parallel", animate);
   }
 
   /**

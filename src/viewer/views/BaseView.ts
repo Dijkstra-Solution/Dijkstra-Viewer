@@ -1,10 +1,12 @@
-import { Vector3 } from "three";
 import { CameraControls } from "@react-three/drei";
 
+export type CameraMode = 'perspective' | 'orthographic';
+
 export interface ViewSettings {
-  position: Vector3;
-  target: Vector3;
-  up: Vector3;
+  position: number[];
+  target: number[];
+  up: number[];
+  useOrthographicCamera?: boolean;
   constraints?: {
     azimuthRotateSpeed?: number;
     polarRotateSpeed?: number;
@@ -45,15 +47,50 @@ export abstract class BaseView {
 
     // Set camera position and target
     controls.setLookAt(
-      settings.position.x,
-      settings.position.y,
-      settings.position.z,
-      settings.target.x,
-      settings.target.y,
-      settings.target.z,
+      settings.position[0],
+      settings.position[1],
+      settings.position[2],
+      settings.target[0],
+      settings.target[1],
+      settings.target[2],
       animate
     );
-
+    
+    // Always reset to default control settings first
+    // This ensures previous view constraints don't persist
+    controls.azimuthRotateSpeed = 1.0;
+    controls.polarRotateSpeed = 1.0;
+    controls.truckSpeed = 1.0;
+    controls.dollySpeed = 1.0;
+    controls.draggingSmoothTime = 0;
+    
+    //Camera projection type (orthographic or perspective)
+    if (settings.useOrthographicCamera !== undefined) {
+      // Create a type-safe custom event for camera mode change
+      const cameraMode: CameraMode = settings.useOrthographicCamera ? 'orthographic' : 'perspective';
+      
+      // Store the camera mode preference in a custom property
+      // We use a Symbol-based property to avoid conflicts
+      const cameraModeSymbol = Symbol.for('cameraModePreference');
+      Object.defineProperty(controls, cameraModeSymbol, {
+        value: cameraMode,
+        writable: true,
+        enumerable: false
+      });
+      
+      // Fire an event that the Viewer component can listen to for camera type change
+      const event = new CustomEvent('cameraTypeChange', { 
+        detail: { 
+          useOrthographic: settings.useOrthographicCamera,
+          cameraMode 
+        } 
+      });
+      document.dispatchEvent(event);
+      
+      // Update projection matrix
+      controls.camera.updateProjectionMatrix();
+    }
+    
     // Apply constraint settings if provided
     if (settings.constraints) {
       const c = settings.constraints;
@@ -66,13 +103,6 @@ export abstract class BaseView {
       if (c.draggingSmoothTime !== undefined)
         controls.draggingSmoothTime = c.draggingSmoothTime;
       if (c.smoothTime !== undefined) controls.smoothTime = c.smoothTime;
-    } else {
-      // Default to normal control settings
-      controls.azimuthRotateSpeed = 1.0;
-      controls.polarRotateSpeed = 1.0;
-      controls.truckSpeed = 1.0;
-      controls.dollySpeed = 1.0;
-      controls.draggingSmoothTime = 0;
     }
   }
 }

@@ -169,7 +169,10 @@ function Viewer({
         </scene>
 
         <CameraControls ref={cameraControlRef} />
-        <gridHelper raycast={() => {}} />
+        <gridHelper 
+          args={[20, 20, '#888888', '#444444']}
+          raycast={() => {}}
+        />
       </Canvas>
     </div>
   );

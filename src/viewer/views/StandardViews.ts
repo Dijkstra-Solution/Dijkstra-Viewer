@@ -1,4 +1,3 @@
-import { Vector3 } from "three";
 import { BaseView, ViewSettings } from "./BaseView";
 
 /**
@@ -10,9 +9,9 @@ export class PerspectiveView extends BaseView {
 
   getViewSettings(): ViewSettings {
     return {
-      position: new Vector3(5, 5, 5),
-      target: new Vector3(0, 0, 0),
-      up: new Vector3(0, 1, 0),
+      position: [5, 5, 5],
+      target: [0, 0, 0],
+      up: [0, 1, 0]
     };
   }
 }
@@ -26,30 +25,15 @@ export class TopView extends BaseView {
 
   getViewSettings(): ViewSettings {
     return {
-      position: new Vector3(0, 10, 0),
-      target: new Vector3(0, 0, 0),
-      up: new Vector3(0, 0, -1),
+      position: [0, 10, 0],
+      target: [0, 0, 0],
+      up: [0, 0, -1],
+      useOrthographicCamera: true,
       constraints: {
         // Restrict rotation in top view
         azimuthRotateSpeed: 0,
         polarRotateSpeed: 0,
       },
-    };
-  }
-}
-
-/**
- * Standard Parallel View implementation
- */
-export class ParallelView extends BaseView {
-  readonly viewId: string = "parallel";
-  readonly displayName: string = "Parallel";
-
-  getViewSettings(): ViewSettings {
-    return {
-      position: new Vector3(10, 5, 0),
-      target: new Vector3(0, 0, 0),
-      up: new Vector3(0, 1, 0),
     };
   }
 }
