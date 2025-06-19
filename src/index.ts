@@ -14,4 +14,3 @@ export * from "./viewerapi/dto/DTOLine";
 export * from "./viewerapi/dto/DTOPolygon";
 
 export * from "./viewerapi/Events";
-
