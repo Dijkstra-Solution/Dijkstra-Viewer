@@ -4,7 +4,7 @@ import React, {
   useCallback,
   useEffect,
   useMemo,
-  useRef, useState,
+  useRef,
   useState,
 } from "react";
 import * as THREE from "three";
