@@ -64,22 +64,30 @@ export function ViewerProvider({ children }: { children: React.ReactNode }) {
   const selectPoints = useCallback(
     (
       count: number,
-      callback: (pts: number[]) => void,
+      callback: (points: number[], normals: number[]) => void,
       signal?: AbortSignal
     ) => {
       const points: number[][] = [];
+      const normals: number[][] = [];
 
-      const clickHandler = ({ point }: { point: number[] }) => {
+      const clickHandler = ({
+        point,
+        normal,
+      }: {
+        point: number[];
+        normal: number[];
+      }) => {
         points.push(point);
+        normals.push(normal);
         if (points.length == count) {
           cleanup();
-          callback(points.flat());
+          callback(points.flat(), normals.flat());
         }
       };
 
       const onAbort = () => {
         cleanup();
-        callback([]);
+        callback([], []);
       };
 
       const cleanup = () => {

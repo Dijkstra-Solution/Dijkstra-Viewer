@@ -101,8 +101,9 @@ function Wrapper() {
     >
       <button
         onClick={() => {
-          actions.SelectPoints(1, (pts) => {
-            const box = createBox(pts);
+          actions.SelectPoints(1, (points, normals) => {
+            console.log(points, normals);
+            const box = createBox(points);
             actions.AddEntity(box);
           });
         }}

@@ -1,6 +1,6 @@
 import { Canvas } from "@react-three/fiber";
 import { CameraControls } from "@react-three/drei";
-import { useCallback, useEffect, useMemo, useRef } from "react";
+import { useCallback, useEffect, useMemo, useRef, useState } from "react";
 import * as THREE from "three";
 import { Events, EventType, ViewType } from "../viewerapi/Events";
 import { useViewer } from "./hooks/useViewer";
@@ -19,6 +19,17 @@ function Viewer({
   style,
 }: ViewerProps) {
   const { on, off, fire, mergedGeometry, viewManager } = useViewer();
+
+  //#region Intersection Handling
+  const [intersectionPoint, setIntersectionPoint] =
+    useState<THREE.Vector3 | null>(null);
+  const intersectionSphereRef = useRef<THREE.Mesh>(null);
+  useEffect(() => {
+    if (intersectionSphereRef.current) {
+      intersectionSphereRef.current.layers.set(1);
+    }
+  }, [intersectionPoint]);
+  //#endregion
 
   const material = useMemo(() => {
     return new THREE.MeshBasicMaterial({
@@ -57,21 +68,24 @@ function Viewer({
           return;
         }
         const { scene, camera, raycaster, size } = ctx;
-        const mouse = new THREE.Vector2();
-
-        mouse.x = (event.clientX / size.width) * 2 - 1;
-        mouse.y = -(event.clientY / size.height) * 2 + 1;
+        const mouse = new THREE.Vector2(
+          (event.clientX / size.width) * 2 - 1,
+          -(event.clientY / size.height) * 2 + 1
+        );
 
         raycaster.setFromCamera(mouse, camera);
         const intersects = raycaster.intersectObjects(scene.children);
         if (intersects.length > 0) {
-          // const guid = intersects[0].object.userData.guid ?? "jej";
-          console.log(intersects[0]);
           fire(Events.SceneClicked, {
             point: [
               intersects[0].point.x,
               intersects[0].point.y,
               intersects[0].point.z,
+            ],
+            normal: [
+              intersects[0].face?.normal.x ?? 0,
+              intersects[0].face?.normal.y ?? 0,
+              intersects[0].face?.normal.z ?? 0,
             ],
           });
           return;
@@ -85,6 +99,7 @@ function Viewer({
         if (pointOnPlane) {
           fire(Events.SceneClicked, {
             point: [pointOnPlane.x, pointOnPlane.y, pointOnPlane.z],
+            normal: [0, 1, 0],
           });
         }
       }
@@ -100,14 +115,20 @@ function Viewer({
         return;
       }
       const { camera, raycaster, scene, size } = ctx;
-      const mouse = new THREE.Vector2();
+      const mouse = new THREE.Vector2(
+        (event.clientX / size.width) * 2 - 1,
+        -(event.clientY / size.height) * 2 + 1
+      );
 
-      mouse.x = (event.clientX / size.width) * 2 - 1;
-      mouse.y = -(event.clientY / size.height) * 2 + 1;
-
+      raycaster.layers.set(0);
+      raycaster.firstHitOnly = false;
       raycaster.setFromCamera(mouse, camera);
       const intersects = raycaster.intersectObjects(scene.children);
-      console.log(intersects);
+      if (intersects.length > 0) {
+        setIntersectionPoint(intersects[0].point);
+      } else {
+        setIntersectionPoint(null);
+      }
     },
     []
   );
@@ -154,6 +175,7 @@ function Viewer({
       <Canvas
         camera={{ position: [0, 0, 5] }}
         onCreated={({ scene, camera, raycaster, size }) => {
+          camera.layers.enableAll();
           three.current = {
             scene,
             camera: camera as THREE.PerspectiveCamera,
@@ -166,13 +188,23 @@ function Viewer({
       >
         <scene>
           <mesh geometry={mergedGeometry} material={material}></mesh>
+          {intersectionPoint && (
+            <mesh
+              ref={intersectionSphereRef}
+              position={[
+                intersectionPoint.x,
+                intersectionPoint.y,
+                intersectionPoint.z,
+              ]}
+            >
+              <sphereGeometry args={[0.1, 16, 16]} />
+              <meshBasicMaterial color="red" />
+            </mesh>
+          )}
         </scene>
 
         <CameraControls ref={cameraControlRef} />
-        <gridHelper 
-          args={[20, 20, '#888888', '#444444']}
-          raycast={() => {}}
-        />
+        <gridHelper args={[20, 20, "#888888", "#444444"]} raycast={() => {}} />
       </Canvas>
     </div>
   );
