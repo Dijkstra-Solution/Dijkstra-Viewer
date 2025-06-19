@@ -22,8 +22,13 @@ export type CustomViewSettings = {
 export const viewerActions = {
   SelectPoints: unbound as (
     count: number,
-    callback: (pts: number[]) => void
+    callback: (data: {
+      guids: string[];
+      points: number[];
+      normals: number[];
+    }) => void
   ) => void,
+
   AddEntity: unbound as (entity: DTOEntity) => void,
   RemoveEntity: unbound as (guid: string) => void,
   ClearEntities: unbound as () => void,

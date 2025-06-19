@@ -5,6 +5,7 @@ import { ViewerProvider } from "@/viewer/ViewerProvider";
 import { DTOPolygon } from "@/viewerapi/dto/DTOPolygon";
 import { DTOComposite } from "@/viewerapi/dto/DTOComposite";
 import { generateUUID } from "three/src/math/MathUtils.js";
+import { Events } from "@/viewerapi/Events";
 import { useEffect } from "react";
 
 export function ClientTest() {
@@ -117,8 +118,9 @@ function Wrapper() {
     >
       <button
         onClick={() => {
-          actions.SelectPoints(1, (pts) => {
-            const box = createBox(pts);
+          actions.SelectPoints(1, ({ points }) => {
+            // console.log(guid, points, normal);
+            const box = createBox(points);
             actions.AddEntity(box);
           });
         }}
@@ -130,7 +132,13 @@ function Wrapper() {
           {view.displayName}
         </button>
       ))}
-      <Viewer></Viewer>
+      <Viewer
+        eventHandlers={{
+          [Events.StatusMessage]: (payload) => {
+            console.log(payload.message);
+          },
+        }}
+      ></Viewer>
     </div>
   );
 }

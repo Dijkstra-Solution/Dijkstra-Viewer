@@ -18,7 +18,6 @@ export abstract class DTOEntity {
   //TODO - use functional tracking
   geometry(): BufferGeometry {
     if (this.#rev != this.#builtRev) {
-      console.log("Recalculated", this.guid);
       this.#builtRev = this.#rev;
       this.#cachedGeometry = this.buildGeometry();
     }

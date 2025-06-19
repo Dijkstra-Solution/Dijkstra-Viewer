@@ -18,7 +18,7 @@ export const Events = {
 export type EventPayloads = {
   //TODO - send them as json object or raw data?
   [Events.EntitySelected]: { guid: string };
-  [Events.SceneClicked]: { point: number[] };
+  [Events.SceneClicked]: { guid?: string; point: number[]; normal: number[] };
   [Events.SceneUpdated]: { geometry: BufferGeometry };
   [Events.StatusMessage]: { message: string };
   [Events.ViewChanged]: { view: string };
