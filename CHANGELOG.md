@@ -2,6 +2,8 @@
 
 All notable changes to this project will be documented in this file. See [standard-version](https://github.com/conventional-changelog/standard-version) for commit guidelines.
 
+### [0.0.29](https://github.com/Dzsidzsi/R3FTest2/compare/v0.0.28...v0.0.29) (2025-06-19)
+
 ### [0.0.28](https://github.com/Dzsidzsi/R3FTest2/compare/v0.0.27...v0.0.28) (2025-06-18)
 
 ### [0.0.27](https://github.com/Dzsidzsi/R3FTest2/compare/v0.0.26...v0.0.27) (2025-06-18)
