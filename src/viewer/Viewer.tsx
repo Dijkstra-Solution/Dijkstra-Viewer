@@ -1,5 +1,5 @@
 import { Canvas } from "@react-three/fiber";
-import { CameraControls } from "@react-three/drei";
+import { CameraControls, OrthographicCamera, PerspectiveCamera } from "@react-three/drei";
 import React, {
   useCallback,
   useEffect,
@@ -8,6 +8,7 @@ import React, {
   useState,
 } from "react";
 import * as THREE from "three";
+import { Events, EventType } from "../viewerapi/Events";
 import { Events, EventType } from "../viewerapi/Events";
 import { useViewer } from "./hooks/useViewer";
 import { EventHandlerMap } from "./EventHandlerMap";
@@ -35,7 +36,7 @@ interface ViewerProps {
       
     };
   };
-  initialView?: ViewType | (() => void);
+  initialView?: string | (() => void);
   style?: React.CSSProperties; // Stílusok a container elemhez
   className?: string; // CSS osztály a container elemhez
 }
@@ -46,11 +47,19 @@ function Viewer({
   initialView = "perspective",
   style,
 }: ViewerProps) {
-  const { on, off, fire, mergedGeometry, viewManager } = useViewer();
-
-  const [selectionMode, setSelectionMode] = useState<SelectionMode>(
-    SelectionMode.DEFAULT
-  );
+  const [useOrthographic, setUseOrthographic] = useState(false);
+  const [cameraPosition, setCameraPosition] = useState([0, 0, 5]);
+  const [cameraUp, setCameraUp] = useState([0, 1, 0]);
+  const [cameraConstraints, setCameraConstraints] = useState<{
+    azimuthRotateSpeed?: number;
+    polarRotateSpeed?: number;
+    truckSpeed?: number;
+    dollySpeed?: number;
+    draggingSmoothTime?: number;
+    smoothTime?: number;
+  }>({}); 
+  
+  const { on, off, fire, mergedGeometry, views, actions } = useViewer();
 
   const cameraControlRef = useRef<CameraControls | null>(null);
   const containerRef = useRef<HTMLDivElement>(null);
@@ -364,33 +373,77 @@ function Viewer({
   );
   //#endregion
 
-  // Setup camera controls monitoring
+  // Handle camera type changes from view settings
   useEffect(() => {
+    // Create a custom event handler for the view changed event
+    const handleViewChanged = (data: { view: string }) => {
+      const currentView = views.getView(data.view);
+      if (currentView) {
+        const settings = currentView.getViewSettings();
+
+        setUseOrthographic(!!settings.useOrthographicCamera);
+        
+        if (Array.isArray(settings.position) && settings.position.length >= 3) {
+          setCameraPosition(settings.position);
+        }
+        
+        if (Array.isArray(settings.up) && settings.up.length >= 3) {
+          setCameraUp(settings.up);
+        }
+
+        if (settings.constraints) {
+          setCameraConstraints(settings.constraints);
+        } else {
+          setCameraConstraints({});
+        }
+      }
+    };
+
+    // Register for the ViewChanged event
+    on("ViewChanged", handleViewChanged);
+
+    return () => {
+      // Cleanup event listener
+      off("ViewChanged", handleViewChanged);
+    };
+  }, [on, off, views]);
+
+  
+  // Setup camera controls monitoring - only runs once on mount
+  useEffect(() => {
+    // Store the references to avoid closure issues
+    const currentViews = views;
+    const currentActions = actions;
+    const currentInitialView = initialView;
+    
     // Try to setup camera controls when available
     const checkInterval = setInterval(() => {
       if (cameraControlRef.current) {
         // Set camera controls reference to the ViewManager
-        viewManager.setCameraControlsRef(cameraControlRef);
+        currentViews.setCameraControlsRef(cameraControlRef);
 
         // Set initial view once camera controls are available
-        if (initialView) {
-          if (typeof initialView === "function") {
+        if (currentInitialView) {
+          if (typeof currentInitialView === "function") {
             // Function feature direct call
-            initialView();
+            currentInitialView();
           } else {
             // String feature with ViewManager
-            viewManager.setView(initialView);
+            currentActions.SetView(currentInitialView);
+            console.log("set initial view - should only happen once");
             // ViewManager handles the event firing internally
           }
         }
-
+        
         clearInterval(checkInterval);
       }
     }, 100); // Check every 100ms
 
     // Cleanup interval when component unmounts
     return () => clearInterval(checkInterval);
-  }, [initialView, viewManager]);
+  }, []);
+
+  // Container stílus a felhasználói stílus és az alapértelmezett értékek kombinálásával
 
   const containerStyles: React.CSSProperties = {
     position: "relative",
@@ -410,7 +463,7 @@ function Viewer({
           camera.layers.enableAll();
           three.current = {
             scene,
-            camera: camera as THREE.PerspectiveCamera,
+            camera: camera as THREE.PerspectiveCamera, // Will be replaced
             raycaster,
           };
         }}
@@ -464,9 +517,40 @@ function Viewer({
           </mesh>
         )}
 
-        <CameraControls ref={cameraControlRef} />
-        <gridHelper args={[20, 20, "#888888", "#444444"]} raycast={() => {}} />
-        <axesHelper raycast={() => {}}></axesHelper>
+        {/* Conditional camera rendering based on useOrthographic state */}
+        {useOrthographic ? (
+          <OrthographicCamera 
+            makeDefault 
+            position={[cameraPosition[0], cameraPosition[1], cameraPosition[2]]}
+            up={[cameraUp[0], cameraUp[1], cameraUp[2]]}
+            zoom={12}
+            near={0.1}
+            far={1000}
+
+          />
+        ) : (
+          <PerspectiveCamera 
+            makeDefault 
+            position={[cameraPosition[0], cameraPosition[1], cameraPosition[2]]}
+            up={[cameraUp[0], cameraUp[1], cameraUp[2]]}
+            fov={75}
+            near={0.1}
+            far={1000}
+          />
+        )}
+        <CameraControls 
+          ref={cameraControlRef}
+          azimuthRotateSpeed={cameraConstraints.azimuthRotateSpeed !== undefined ? cameraConstraints.azimuthRotateSpeed : 1.0}
+          polarRotateSpeed={cameraConstraints.polarRotateSpeed !== undefined ? cameraConstraints.polarRotateSpeed : 1.0} 
+          truckSpeed={cameraConstraints.truckSpeed !== undefined ? cameraConstraints.truckSpeed : 1.0}
+          dollySpeed={cameraConstraints.dollySpeed !== undefined ? cameraConstraints.dollySpeed : 1.0}
+          draggingSmoothTime={cameraConstraints.draggingSmoothTime !== undefined ? cameraConstraints.draggingSmoothTime : 0}
+          smoothTime={cameraConstraints.smoothTime !== undefined ? cameraConstraints.smoothTime : 0}
+        />
+        <gridHelper 
+          args={[20, 20, '#888888', '#444444']}
+          raycast={() => {}}
+        />
       </Canvas>
     </div>
   );

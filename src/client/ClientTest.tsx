@@ -7,6 +7,7 @@ import { DTOComposite } from "@/viewerapi/dto/DTOComposite";
 import { generateUUID } from "three/src/math/MathUtils.js";
 import { Events } from "@/viewerapi/Events";
 import { useState } from "react";
+import { useEffect } from "react";
 
 export function ClientTest() {
   return (
@@ -16,8 +17,9 @@ export function ClientTest() {
   );
 }
 
+
 function Wrapper() {
-  const { actions } = useViewer();
+  const { actions, views } = useViewer();
   const [hoverOn, setHoverOn] = useState(true);
 
   const randomHex = () =>
@@ -70,9 +72,23 @@ function Wrapper() {
     return composite;
   };
 
+  useEffect(() => {
+    actions.CreateView(
+      "client-view",
+      "Egyedi nézet",
+      {
+        position: [0, 3, 10], // Szemből nézzük
+        target: [0, 0, 0],
+        up: [0, 1, 0],
+        constraints: {
+          smoothTime: 1,
+        },
+      }
+    );
+  }, [actions]);
+
   return (
-    <div
-      style={{
+    <div style={{
         display: "flex",
         flexDirection: "column",
         height: "100vh",
@@ -101,6 +117,11 @@ function Wrapper() {
         </button>
       </div>
 
+      {views.getAllViews().map((view) => (
+        <button key={view.viewId} onClick={() => actions.SetView(view.viewId)}>
+          {view.displayName}
+        </button>
+      ))}
       <Viewer
         eventHandlers={{
           [Events.StatusMessage]: (payload) => {

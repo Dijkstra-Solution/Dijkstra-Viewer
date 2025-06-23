@@ -1,7 +1,9 @@
 import { EventPayloads } from "@/viewerapi/Events";
 import { ViewerActions } from "./ViewerActions";
 import { BufferGeometry } from "three";
-import { ViewManager } from "./views/ViewManager";
+import { BaseView } from "./views/BaseView";
+import { RefObject } from "react";
+import { CameraControls } from "@react-three/drei";
 
 export type ViewerRef = {
   on: <T extends keyof EventPayloads>(
@@ -18,5 +20,11 @@ export type ViewerRef = {
   ) => void;
   actions: ViewerActions;
   mergedGeometry: BufferGeometry;
-  viewManager: ViewManager;
+  views: {
+    getAllViews: () => BaseView[];
+    getView: (viewId: string) => BaseView | undefined;
+    getCurrentView: () => BaseView | undefined;
+    // Internal API - not exposed to end users in documentation
+    setCameraControlsRef: (ref: RefObject<CameraControls | null>) => void;
+  }
 };

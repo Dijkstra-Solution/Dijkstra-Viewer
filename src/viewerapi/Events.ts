@@ -24,9 +24,9 @@ export type EventPayloads = {
   };
   [Events.SceneUpdated]: { geometry: BufferGeometry };
   [Events.StatusMessage]: { message: string };
-  [Events.ViewChanged]: { view: ViewType };
+  [Events.ViewChanged]: { view: string };
   [Events.ViewerLoaded]: { viewer: string };
-  [Events.ViewDeleted]: { view: ViewType };
-  [Events.ViewResized]: { view: ViewType };
-  [Events.ViewCreated]: { view: ViewType };
+  [Events.ViewDeleted]: { view: string };
+  [Events.ViewResized]: { view: string };
+  [Events.ViewCreated]: { view: string };
 };

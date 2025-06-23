@@ -3,11 +3,12 @@ import { useEventEmitter } from "./hooks/useEventEmitter";
 import ViewerContext from "./ViewerContext";
 import { ViewerRef } from "./ViewerRef";
 import { DTOEntity } from "@/viewerapi/dto/DTOEntity";
-import { useCallback, useMemo, useReducer } from "react";
+import { useCallback, useMemo, useReducer, useRef } from "react";
 import { BufferGeometryUtils } from "three/examples/jsm/Addons.js";
 import { BufferGeometry } from "three";
 import { ViewManager } from "./views/ViewManager";
 import { Edge, Face, SurfacePoint } from "./ViewerActions";
+import { BaseView, ViewSettings } from "./views/BaseView";
 
 type State = {
   byId: Map<string, DTOEntity>;
@@ -47,6 +48,9 @@ export function ViewerProvider({ children }: { children: React.ReactNode }) {
     byId: new Map<string, DTOEntity>(),
     rev: 0,
   });
+
+  // Create ViewManager instance first
+  const viewManager = useRef(new ViewManager(fire));
 
   //#region ViewerActions
   const addEntity = useCallback((entity: DTOEntity) => {
@@ -225,6 +229,65 @@ export function ViewerProvider({ children }: { children: React.ReactNode }) {
     return merged;
   }, [state.byId]);
 
+  /*########
+  View creation actions
+  #########*/
+  const deleteView = useCallback(
+    (viewId: string) => {
+      viewManager.current.unregisterView(viewId);
+      fire(Events.ViewDeleted, { view: viewId });
+    },
+    [viewManager, fire]
+  );
+  const setView = useCallback(
+    (viewId: string, animate: boolean = false) => {
+      viewManager.current.setView(viewId, animate);
+      fire(Events.ViewChanged, { view: viewId });
+    },
+    [viewManager, fire]
+  );
+  const createView = useCallback(
+    (viewId: string, displayName?: string, settings?: ViewSettings) => {
+      // If viewId is a standard ViewType and no displayName/settings, just set the view
+      if (typeof viewId === "string" && !displayName && !settings) {
+        return viewManager.current.setView(viewId);
+      }
+
+      // Handle custom view creation
+      if (
+        typeof viewId === "string" &&
+        typeof displayName === "string" &&
+        settings
+      ) {
+        // Create a custom view class that extends BaseView
+        class CustomView extends BaseView {
+          readonly viewId: string = viewId;
+          readonly displayName: string = displayName as string;
+
+          getViewSettings(): ViewSettings {
+            return settings as ViewSettings;
+          }
+        }
+
+        // Register the view
+        const customView = new CustomView();
+        const registered = viewManager.current.setView(customView);
+
+        if (registered) {
+          // Notify about the view creation
+          fire(Events.ViewCreated, { view: viewId });
+        }
+
+        return registered;
+      }
+
+      // Invalid parameters
+      console.warn("Invalid parameters for createView");
+      return false;
+    },
+    [viewManager, fire]
+  );
+
   const actions = useMemo(
     () => ({
       SelectPoints: selectPoints,
@@ -234,6 +297,9 @@ export function ViewerProvider({ children }: { children: React.ReactNode }) {
       AddEntity: addEntity,
       RemoveEntity: removeEntity,
       ClearEntities: clearEntities,
+      SetView: setView,
+      CreateView: createView,
+      DeleteView: deleteView,
     }),
     [
       selectPoints,
@@ -242,17 +308,34 @@ export function ViewerProvider({ children }: { children: React.ReactNode }) {
       addEntity,
       removeEntity,
       clearEntities,
+      setView,
+      createView,
+      deleteView,
     ]
   );
   //#endregion
 
-  // Create ViewManager instance
-  const viewManager = useMemo(() => {
-    return new ViewManager(fire);
-  }, [fire]);
-
   const api = useMemo<ViewerRef>(
-    () => ({ on, off, fire, actions, mergedGeometry, viewManager }),
+    () => ({
+      on,
+      off,
+      fire,
+      actions,
+      mergedGeometry,
+      views: {
+        // View retrieval
+        getAllViews: () => viewManager.current.getAllViews(),
+        getView: (viewId: string) => viewManager.current.getView(viewId),
+        getCurrentView: () => viewManager.current.getCurrentView(),
+
+        deleteView: (viewId: string) =>
+          viewManager.current.unregisterView(viewId),
+
+        // Internal API
+        setCameraControlsRef: (ref) =>
+          viewManager.current.setCameraControlsRef(ref),
+      },
+    }),
     [on, off, fire, actions, mergedGeometry, viewManager]
   );
   return (
