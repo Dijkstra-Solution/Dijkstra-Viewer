@@ -17,7 +17,6 @@ export function ClientTest() {
   );
 }
 
-
 function Wrapper() {
   const { actions, views } = useViewer();
   const [hoverOn, setHoverOn] = useState(true);
@@ -73,22 +72,19 @@ function Wrapper() {
   };
 
   useEffect(() => {
-    actions.CreateView(
-      "client-view",
-      "Egyedi nézet",
-      {
-        position: [0, 3, 10], // Szemből nézzük
-        target: [0, 0, 0],
-        up: [0, 1, 0],
-        constraints: {
-          smoothTime: 1,
-        },
-      }
-    );
+    actions.CreateView("client-view", "Egyedi nézet", {
+      position: [0, 3, 10], // Szemből nézzük
+      target: [0, 0, 0],
+      up: [0, 1, 0],
+      constraints: {
+        smoothTime: 1,
+      },
+    });
   }, [actions]);
 
   return (
-    <div style={{
+    <div
+      style={{
         display: "flex",
         flexDirection: "column",
         height: "100vh",
@@ -115,13 +111,16 @@ function Wrapper() {
         >
           Toggle Hover
         </button>
+        {views.getAllViews().map((view) => (
+          <button
+            key={view.viewId}
+            onClick={() => actions.SetView(view.viewId)}
+          >
+            {view.displayName}
+          </button>
+        ))}
       </div>
 
-      {views.getAllViews().map((view) => (
-        <button key={view.viewId} onClick={() => actions.SetView(view.viewId)}>
-          {view.displayName}
-        </button>
-      ))}
       <Viewer
         eventHandlers={{
           [Events.StatusMessage]: (payload) => {

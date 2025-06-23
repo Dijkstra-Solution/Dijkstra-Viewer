@@ -9,7 +9,6 @@ import React, {
 } from "react";
 import * as THREE from "three";
 import { Events, EventType } from "../viewerapi/Events";
-import { Events, EventType } from "../viewerapi/Events";
 import { useViewer } from "./hooks/useViewer";
 import { EventHandlerMap } from "./EventHandlerMap";
 import {
@@ -17,7 +16,6 @@ import {
   LineSegments2,
   LineSegmentsGeometry,
 } from "three/examples/jsm/Addons.js";
-import { SelectionMode, ViewType } from "@/viewerapi/EventTypes";
 
 interface ViewerProps {
   //TODO - expand feature customizability and write docs
