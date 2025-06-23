@@ -1,7 +1,6 @@
-import { EventPayloads, EventType } from "@/viewerapi/Events";
+import { EventPayloads, EventType } from "@/viewerapi";
+import { EventCallback } from "@/viewerapi/EventTypes";
 import { useCallback, useRef } from "react";
-
-type EventCallback<T> = (payload: T) => void;
 
 export function useEventEmitter() {
   // eslint-disable-next-line @typescript-eslint/no-unsafe-function-type

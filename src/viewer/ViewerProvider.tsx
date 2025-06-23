@@ -7,6 +7,7 @@ import { useCallback, useMemo, useReducer } from "react";
 import { BufferGeometryUtils } from "three/examples/jsm/Addons.js";
 import { BufferGeometry } from "three";
 import { ViewManager } from "./views/ViewManager";
+import { Edge, Face, SurfacePoint } from "./ViewerActions";
 
 type State = {
   byId: Map<string, DTOEntity>;
@@ -64,54 +65,37 @@ export function ViewerProvider({ children }: { children: React.ReactNode }) {
   const selectPoints = useCallback(
     (
       count: number,
-      callback: (data: {
-        guids: string[];
-        points: number[];
-        normals: number[];
-      }) => void,
+      callback: (data: SurfacePoint[]) => void,
       signal?: AbortSignal
     ) => {
-      const guids: string[] = [];
-      const points: number[][] = [];
-      const normals: number[][] = [];
-
       fire(Events.StatusMessage, {
         message: `Pick ${count == 1 ? "a point" : count + " points"}!`,
       });
 
+      const surfacePoints: SurfacePoint[] = [];
       const clickHandler = ({
         guid,
         point,
         normal,
       }: {
         guid: string;
-        point: number[];
-        normal: number[];
+        point: { x: number; y: number; z: number };
+        normal: { x: number; y: number; z: number };
       }) => {
-        guids.push(guid);
-        points.push(point);
-        normals.push(normal);
-        if (points.length == count) {
+        surfacePoints.push({ guid, point, normal });
+        if (surfacePoints.length == count) {
           cleanup();
-          callback({
-            guids: guids,
-            points: points.flat(),
-            normals: normals.flat(),
-          });
+          callback(surfacePoints);
         } else {
           fire(Events.StatusMessage, {
-            message: `Pick ${count} points! (${points.length} / ${count})`,
+            message: `Pick ${count} points! (${surfacePoints.length} / ${count})`,
           });
         }
       };
 
       const onAbort = () => {
         cleanup();
-        callback({
-          guids: [],
-          points: [],
-          normals: [],
-        });
+        callback([]);
       };
 
       const cleanup = () => {
@@ -122,6 +106,96 @@ export function ViewerProvider({ children }: { children: React.ReactNode }) {
       on(Events.SceneClicked, clickHandler);
       signal?.addEventListener("abort", onAbort);
 
+      return cleanup;
+    },
+    [on, off, fire]
+  );
+
+  const selectEdges = useCallback(
+    (count: number, callback: (data: Edge[]) => void, signal?: AbortSignal) => {
+      fire(Events.StatusMessage, {
+        message: `Pick ${count == 1 ? "an edge" : count + " edges"}!`,
+      });
+
+      // fire(PrivateEvents.SelectionModeChanged, { mode: SelectionMode.EDGE });  //TODO
+
+      const edges: Edge[] = [];
+      const clickHandler = ({
+        guid,
+        point,
+        normal,
+      }: {
+        guid: string;
+        point: { x: number; y: number; z: number };
+        normal: { x: number; y: number; z: number };
+      }) => {
+        edges.push({ guid, start: point, end: point });
+        if (edges.length == count) {
+          cleanup();
+          callback(edges);
+        } else {
+          fire(Events.StatusMessage, {
+            message: `Pick ${count} edges! (${edges.length} / ${count})`,
+          });
+        }
+      };
+
+      const onAbort = () => {
+        cleanup();
+        callback([]);
+      };
+
+      const cleanup = () => {
+        off(Events.SceneClicked, clickHandler);
+        signal?.removeEventListener("abort", onAbort);
+      };
+      //TODO - click should retrieve edge instead of point - new (private?) event
+      on(Events.SceneClicked, clickHandler);
+      signal?.addEventListener("abort", onAbort);
+      return cleanup;
+    },
+    [on, off, fire]
+  );
+
+  const selectFaces = useCallback(
+    (count: number, callback: (data: Face[]) => void, signal?: AbortSignal) => {
+      fire(Events.StatusMessage, {
+        message: `Pick ${count == 1 ? "a face" : count + " faces"}!`,
+      });
+
+      const faces: Face[] = [];
+      const clickHandler = ({
+        guid,
+        point,
+        normal,
+      }: {
+        guid: string;
+        point: { x: number; y: number; z: number };
+        normal: { x: number; y: number; z: number };
+      }) => {
+        faces.push({ guid, outline: [], holes: [], normal });
+        if (faces.length == count) {
+          cleanup();
+          callback(faces);
+        } else {
+          fire(Events.StatusMessage, {
+            message: `Pick ${count} faces! (${faces.length} / ${count})`,
+          });
+        }
+      };
+
+      const onAbort = () => {
+        cleanup();
+        callback([]);
+      };
+
+      const cleanup = () => {
+        off(Events.SceneClicked, clickHandler);
+        signal?.removeEventListener("abort", onAbort);
+      };
+      //TODO - click should retrieve face instead of point
+      on(Events.SceneClicked, clickHandler);
+      signal?.addEventListener("abort", onAbort);
       return cleanup;
     },
     [on, off, fire]
@@ -154,11 +228,21 @@ export function ViewerProvider({ children }: { children: React.ReactNode }) {
   const actions = useMemo(
     () => ({
       SelectPoints: selectPoints,
+      SelectEdges: selectEdges,
+      SelectFaces: selectFaces,
+
       AddEntity: addEntity,
       RemoveEntity: removeEntity,
       ClearEntities: clearEntities,
     }),
-    [selectPoints, addEntity, removeEntity, clearEntities]
+    [
+      selectPoints,
+      selectEdges,
+      selectFaces,
+      addEntity,
+      removeEntity,
+      clearEntities,
+    ]
   );
   //#endregion
 

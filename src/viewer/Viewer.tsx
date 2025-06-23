@@ -8,12 +8,33 @@ import React, {
   useState,
 } from "react";
 import * as THREE from "three";
-import { Events, EventType, ViewType } from "../viewerapi/Events";
+import { Events, EventType } from "../viewerapi/Events";
 import { useViewer } from "./hooks/useViewer";
 import { EventHandlerMap } from "./EventHandlerMap";
+import {
+  LineMaterial,
+  LineSegments2,
+  LineSegmentsGeometry,
+} from "three/examples/jsm/Addons.js";
+import { SelectionMode, ViewType } from "@/viewerapi/EventTypes";
 
 interface ViewerProps {
+  //TODO - expand feature customizability and write docs
   eventHandlers?: EventHandlerMap;
+  features?: {
+    hover?: {
+      enabled?: boolean;
+      color?: number;
+    };
+    selection?: {
+      enabled?: boolean;
+      color?: number;
+    };
+    snapping?: {
+      enabled?: boolean;
+      
+    };
+  };
   initialView?: ViewType | (() => void);
   style?: React.CSSProperties; // Stílusok a container elemhez
   className?: string; // CSS osztály a container elemhez
@@ -21,63 +42,21 @@ interface ViewerProps {
 
 function Viewer({
   eventHandlers,
+  features,
   initialView = "perspective",
   style,
 }: ViewerProps) {
   const { on, off, fire, mergedGeometry, viewManager } = useViewer();
 
+  const [selectionMode, setSelectionMode] = useState<SelectionMode>(
+    SelectionMode.DEFAULT
+  );
+
   const cameraControlRef = useRef<CameraControls | null>(null);
   const containerRef = useRef<HTMLDivElement>(null);
 
-  const [hoveredGUID, setHoveredGUID] = useState<string | null>(null);
-  const outlineSegments = useMemo<THREE.LineSegments | null>(() => {
-    if (!hoveredGUID || !mergedGeometry) return null;
-
-    const positionAttribute = mergedGeometry.attributes.position;
-    const indexArray = mergedGeometry.index;
-    const faceMap: Record<number, string> = mergedGeometry.userData.faceMap;
-    if (!indexArray || !positionAttribute) return null;
-
-    const edgeGeometryIndices: number[] = [];
-
-    for (let i = 0; i < indexArray.count / 3; i++) {
-      if (faceMap[i] === hoveredGUID) {
-        edgeGeometryIndices.push(
-          indexArray.array[i * 3],
-          indexArray.array[i * 3 + 1],
-          indexArray.array[i * 3 + 2]
-        );
-      }
-    }
-    const edgeGeometry = new THREE.BufferGeometry();
-    edgeGeometry.setAttribute("position", positionAttribute);
-    edgeGeometry.setIndex(edgeGeometryIndices);
-    edgeGeometry.computeVertexNormals();
-
-    const edges = new THREE.EdgesGeometry(edgeGeometry);
-    const lineSegmentsMaterial = new THREE.LineBasicMaterial({
-      color: "yellow",
-      linewidth: 2,
-    });
-
-    const lineSegments = new THREE.LineSegments(edges, lineSegmentsMaterial);
-    lineSegments.layers.set(1);
-    return lineSegments;
-  }, [hoveredGUID, mergedGeometry]);
-
-  //#region Sphere on Intersection
-  const [intersectionPoint, setIntersectionPoint] =
-    useState<THREE.Vector3 | null>(null);
-  const intersectionSphereRef = useRef<THREE.Mesh>(null);
-  useEffect(() => {
-    if (intersectionSphereRef.current) {
-      intersectionSphereRef.current.layers.set(1);
-    }
-  }, [intersectionPoint]);
-  //#endregion
-
-  const material = useMemo(() => {
-    return new THREE.MeshBasicMaterial({
+  const mergedGeometryMaterial = useMemo(() => {
+    return new THREE.MeshPhongMaterial({
       vertexColors: true,
     });
   }, []);
@@ -88,12 +67,193 @@ function Viewer({
       on(event as EventType, handler);
     });
 
+    //TODO
+    // const selectionModeHandler = ({ mode: mode }: { mode: SelectionMode }) => {
+    //   setSelectionMode(mode);
+    // };
+
     return () => {
       Object.entries(eventHandlers ?? {}).forEach(([event, handler]) => {
         off(event as EventType, handler);
       });
     };
   }, [on, off, eventHandlers]);
+  //#endregion
+
+  //#region Hover
+  const [hoveredGUID, setHoveredGUID] = useState<string | null>(null);
+  const [hoveredOutlineGeometry, setHoveredOutlineGeometry] =
+    useState<LineSegmentsGeometry | null>(null);
+  const hoveredOutlineMaterial = useMemo<LineMaterial>(
+    () =>
+      new LineMaterial({
+        color: features?.hover?.color ?? 0xffffff,
+        linewidth: 3,
+        depthTest: false,
+        resolution: new THREE.Vector2(window.innerWidth, window.innerHeight),
+      }),
+    [features?.hover?.color]
+  );
+  useEffect(() => {
+    if (!hoveredGUID || !mergedGeometry) {
+      setHoveredOutlineGeometry((old) => {
+        if (old) old.dispose();
+        return null;
+      });
+      return;
+    }
+    const positionAttribute = mergedGeometry.attributes.position;
+    const indexArray = mergedGeometry.index;
+    if (!indexArray || !positionAttribute) return;
+
+    // const edgeGeometryIndices: number[] = [];
+    // for (let i = 0; i < indexArray.count / 3; i++) {
+    //   if (faceMap[i] === hoveredGUID) {
+    //     edgeGeometryIndices.push(
+    //       indexArray.array[i * 3],
+    //       indexArray.array[i * 3 + 1],
+    //       indexArray.array[i * 3 + 2]
+    //     );
+    //   }
+    // }
+    //
+    // const edgeGeometry = new THREE.BufferGeometry();
+    // edgeGeometry.setAttribute("position", positionAttribute);
+    // edgeGeometry.setIndex(edgeGeometryIndices);
+    // edgeGeometry.computeVertexNormals();
+    // const edges = new THREE.EdgesGeometry(edgeGeometry);
+    //
+    // setHoveredOutlineGeometry((old) => {
+    //   if (old) old.dispose();
+    //   return edges;
+    // });
+    // console.log("recalculating");
+    // edgeGeometry.dispose();
+
+    // return () => {
+    //   edges.dispose();
+    // };
+    const faceMap: Record<number, string> = mergedGeometry.userData.faceMap;
+    const edgeMap = new Map<string, { a: number; b: number; count: number }>();
+    const triCount = indexArray.count / 3;
+    for (let i = 0; i < triCount; i++) {
+      if (faceMap[i] !== hoveredGUID) continue;
+      const a = indexArray.array[i * 3];
+      const b = indexArray.array[i * 3 + 1];
+      const c = indexArray.array[i * 3 + 2];
+      [
+        [a, b],
+        [b, c],
+        [c, a],
+      ].forEach(([v1, v2]) => {
+        const key = v1 < v2 ? `${v1}_${v2}` : `${v2}_${v1}`;
+        const existing = edgeMap.get(key);
+        if (existing) existing.count++;
+        else edgeMap.set(key, { a: v1, b: v2, count: 1 });
+      });
+    }
+    const positions: number[] = [];
+    edgeMap.forEach(({ a, b, count }) => {
+      if (count == 1) {
+        positions.push(positionAttribute.array[a * 3]);
+        positions.push(positionAttribute.array[a * 3 + 1]);
+        positions.push(positionAttribute.array[a * 3 + 2]);
+        positions.push(positionAttribute.array[b * 3]);
+        positions.push(positionAttribute.array[b * 3 + 1]);
+        positions.push(positionAttribute.array[b * 3 + 2]);
+      }
+    });
+    const lsGeo = new LineSegmentsGeometry();
+    lsGeo.setPositions(positions);
+    setHoveredOutlineGeometry((old) => {
+      if (old) old.dispose();
+      return lsGeo;
+    });
+
+    return () => {
+      lsGeo.dispose();
+    };
+  }, [hoveredGUID, mergedGeometry]);
+  //#endregion
+
+  //#region Seletion
+  const [selectedGUIDs, setSelectedGUIDs] = useState<Set<string>>(
+    new Set<string>()
+  );
+  const [selectedOutlineGeometry, setSelectedOutlineGeometry] =
+    useState<LineSegmentsGeometry | null>(null);
+  const selectedOutlineMaterial = useMemo<LineMaterial>(
+    () =>
+      new LineMaterial({
+        color: features?.selection?.color ?? 0xffffff,
+        linewidth: 3,
+        depthTest: false,
+        resolution: new THREE.Vector2(window.innerWidth, window.innerHeight),
+      }),
+    [features?.selection?.color]
+  );
+
+  useEffect(() => {
+    if (selectedGUIDs.size === 0 || !mergedGeometry) {
+      setSelectedOutlineGeometry((old) => {
+        if (old) old.dispose();
+        return null;
+      });
+      return;
+    }
+
+    const positionAttribute = mergedGeometry.attributes.position;
+    const indexArray = mergedGeometry.index;
+    if (!indexArray || !positionAttribute) return;
+
+    const faceMap: Record<number, string> = mergedGeometry.userData.faceMap;
+    const edgeMap = new Map<string, { a: number; b: number; count: number }>();
+    const triCount = indexArray.count / 3;
+    for (let i = 0; i < triCount; i++) {
+      if (!selectedGUIDs.has(faceMap[i])) continue;
+      const a = indexArray.array[i * 3];
+      const b = indexArray.array[i * 3 + 1];
+      const c = indexArray.array[i * 3 + 2];
+      [
+        [a, b],
+        [b, c],
+        [c, a],
+      ].forEach(([v1, v2]) => {
+        const key = v1 < v2 ? `${v1}_${v2}` : `${v2}_${v1}`;
+        const existing = edgeMap.get(key);
+        if (existing) existing.count++;
+        else edgeMap.set(key, { a: v1, b: v2, count: 1 });
+      });
+    }
+    const positions: number[] = [];
+    edgeMap.forEach(({ a, b, count }) => {
+      if (count == 1) {
+        positions.push(positionAttribute.array[a * 3]);
+        positions.push(positionAttribute.array[a * 3 + 1]);
+        positions.push(positionAttribute.array[a * 3 + 2]);
+        positions.push(positionAttribute.array[b * 3]);
+        positions.push(positionAttribute.array[b * 3 + 1]);
+        positions.push(positionAttribute.array[b * 3 + 2]);
+      }
+    });
+    const lsGeo = new LineSegmentsGeometry();
+    lsGeo.setPositions(positions);
+    setSelectedOutlineGeometry((old) => {
+      if (old) old.dispose();
+      return lsGeo;
+    });
+  }, [selectedGUIDs, mergedGeometry]);
+  //#endregion
+
+  //#region Sphere on Intersection
+  const [intersectionPoint, setIntersectionPoint] =
+    useState<THREE.Vector3 | null>(null);
+  const intersectionSphereRef = useRef<THREE.Mesh>(null);
+  useEffect(() => {
+    if (intersectionSphereRef.current) {
+      intersectionSphereRef.current.layers.set(1);
+    }
+  }, [intersectionPoint]);
   //#endregion
 
   //TODO - refine this (useThree / put into separate component)
@@ -120,38 +280,44 @@ function Viewer({
     (event: React.PointerEvent<HTMLDivElement>) => {
       if (event.button == 0) {
         const ctx = three.current;
-        if (!ctx) {
-          return;
-        }
+        if (!ctx) return;
+
         const { scene, camera, raycaster } = ctx;
         const mouse = getMouse(event);
         raycaster.setFromCamera(mouse, camera);
+        raycaster.layers.set(0);
+        raycaster.firstHitOnly = false;
         const intersects = raycaster.intersectObjects(scene.children);
         if (intersects.length > 0) {
-          let guid = undefined;
+          let guid: string | undefined = undefined;
           const ind = intersects[0].faceIndex;
-          if (ind != undefined && ind != null) {
+          if (features?.selection?.enabled && ind != undefined && ind != null) {
             guid = (intersects[0].object as THREE.Mesh).geometry.userData
               .faceMap?.[ind];
+            setSelectedGUIDs((old) => new Set([...old, guid as string]));
+            fire(Events.EntitySelected, { guid: guid });
           }
-          setHoveredGUID(guid ?? null);
-
+          //TODO - change/remove SceneClicked event
           fire(Events.SceneClicked, {
             guid: guid,
-            point: [
-              intersects[0].point.x,
-              intersects[0].point.y,
-              intersects[0].point.z,
-            ],
-            normal: [
-              intersects[0].face?.normal.x ?? 0,
-              intersects[0].face?.normal.y ?? 0,
-              intersects[0].face?.normal.z ?? 0,
-            ],
+            point: {
+              x: intersects[0].point.x,
+              y: intersects[0].point.y,
+              z: intersects[0].point.z,
+            },
+            normal: {
+              x: intersects[0].face?.normal.x ?? 0,
+              y: intersects[0].face?.normal.y ?? 0,
+              z: intersects[0].face?.normal.z ?? 0,
+            },
           });
           return;
+        } else {
+          if (features?.selection?.enabled) {
+            setSelectedGUIDs(new Set());
+            fire(Events.EntitySelected, { guid: undefined });
+          }
         }
-        setHoveredGUID(null);
         const pointOnPlane = raycaster.ray.intersectPlane(
           new THREE.Plane(new THREE.Vector3(0, 1, 0), 0),
           new THREE.Vector3()
@@ -159,21 +325,21 @@ function Viewer({
 
         if (pointOnPlane) {
           fire(Events.SceneClicked, {
-            point: [pointOnPlane.x, pointOnPlane.y, pointOnPlane.z],
-            normal: [0, 1, 0],
+            point: { x: pointOnPlane.x, y: pointOnPlane.y, z: pointOnPlane.z },
+            normal: { x: 0, y: 1, z: 0 },
           });
         }
       }
     },
-    [getMouse, fire]
+    [getMouse, features?.selection, fire]
   );
 
   const handleMouseMove = useCallback(
     (event: React.PointerEvent<HTMLDivElement>) => {
+      if (!features?.hover?.enabled) return;
       const ctx = three.current;
-      if (!ctx) {
-        return;
-      }
+      if (!ctx) return;
+
       const { camera, raycaster, scene } = ctx;
       const mouse = getMouse(event);
       raycaster.layers.set(0);
@@ -181,16 +347,20 @@ function Viewer({
       raycaster.setFromCamera(mouse, camera);
       const intersects = raycaster.intersectObjects(scene.children);
       if (intersects.length > 0) {
-        if (intersects[0].object instanceof THREE.Mesh) {
-          //(intersects[0].object.geometry.userData.faceMap);
-          //TODO
+        let guid = undefined;
+        const ind = intersects[0].faceIndex;
+        if (ind != undefined && ind != null) {
+          guid = (intersects[0].object as THREE.Mesh).geometry.userData
+            .faceMap?.[ind];
         }
+        setHoveredGUID(guid ?? null);
         setIntersectionPoint(intersects[0].point);
       } else {
+        setHoveredGUID(null);
         setIntersectionPoint(null);
       }
     },
-    [getMouse]
+    [getMouse, features?.hover?.enabled]
   );
   //#endregion
 
@@ -222,14 +392,15 @@ function Viewer({
     return () => clearInterval(checkInterval);
   }, [initialView, viewManager]);
 
-  // Container stílus a felhasználói stílus és az alapértelmezett értékek kombinálásával
-
   const containerStyles: React.CSSProperties = {
     position: "relative",
     margin: "10px",
     flex: 1,
     ...style,
   };
+
+  // TODO - track light position based on user time
+  const angle = (3 * Math.PI) / 4;
 
   return (
     <div style={containerStyles} ref={containerRef}>
@@ -246,10 +417,39 @@ function Viewer({
         onPointerUp={handleClick}
         onMouseMove={handleMouseMove}
       >
-        {/* <scene> */}
-        <mesh geometry={mergedGeometry} material={material}></mesh>
-        {outlineSegments && <primitive object={outlineSegments} />}
+        <ambientLight intensity={Math.PI / 3} />
+        <directionalLight
+          position={[100 * Math.cos(angle), 100 * Math.sin(angle), 0]}
+          intensity={Math.PI}
+        />
 
+        {/* <pointLight position={[-10, 10, -10]} decay={0} intensity={Math.PI} /> */}
+        <mesh
+          geometry={mergedGeometry}
+          material={mergedGeometryMaterial}
+        ></mesh>
+
+        {selectedOutlineGeometry && (
+          <primitive
+            object={
+              new LineSegments2(
+                selectedOutlineGeometry,
+                selectedOutlineMaterial
+              )
+            }
+            layers={1}
+            renderOrder={2}
+          />
+        )}
+        {hoveredOutlineGeometry && (
+          <primitive
+            object={
+              new LineSegments2(hoveredOutlineGeometry, hoveredOutlineMaterial)
+            }
+            layers={1}
+            renderOrder={3}
+          />
+        )}
         {intersectionPoint && (
           <mesh
             ref={intersectionSphereRef}
@@ -263,10 +463,10 @@ function Viewer({
             <meshBasicMaterial color="red" />
           </mesh>
         )}
-        {/* </scene> */}
 
         <CameraControls ref={cameraControlRef} />
         <gridHelper args={[20, 20, "#888888", "#444444"]} raycast={() => {}} />
+        <axesHelper raycast={() => {}}></axesHelper>
       </Canvas>
     </div>
   );
