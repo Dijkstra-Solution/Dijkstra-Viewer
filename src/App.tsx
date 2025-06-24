@@ -1,14 +1,8 @@
 import "./App.css";
-import { ViewerProvider } from "./viewer/ViewerProvider";
-import { Viewer } from "./viewer/Viewer";
 
-
+// Egyszerű egyedi nézet, amit a kliens könnyen létrehozhat
 function App() {
-  return (
-    <ViewerProvider>
-      <Viewer />
-    </ViewerProvider>
-  );
+  return <></>;
 }
 
 export default App;

@@ -1,6 +1,5 @@
 import { BufferGeometry } from "three";
-
-export type EventType = (typeof Events)[keyof typeof Events];
+import { ViewType } from "./EventTypes";
 
 export const Events = {
   EntitySelected: "EntitySelected",
@@ -14,11 +13,15 @@ export const Events = {
   ViewCreated: "ViewCreated",
 } as const;
 
+export type EventType = (typeof Events)[keyof typeof Events];
 
 export type EventPayloads = {
-  //TODO - send them as json object or raw data?
-  [Events.EntitySelected]: { guid: string };
-  [Events.SceneClicked]: { guid?: string; point: number[]; normal: number[] };
+  [Events.EntitySelected]: { guid?: string };
+  [Events.SceneClicked]: {
+    guid?: string;
+    point: { x: number; y: number; z: number };
+    normal: { x: number; y: number; z: number };
+  };
   [Events.SceneUpdated]: { geometry: BufferGeometry };
   [Events.StatusMessage]: { message: string };
   [Events.ViewChanged]: { view: string };
