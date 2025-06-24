@@ -6,7 +6,7 @@ import { DTOPolygon } from "@/viewerapi/dto/DTOPolygon";
 import { DTOComposite } from "@/viewerapi/dto/DTOComposite";
 import { generateUUID } from "three/src/math/MathUtils.js";
 import { Events } from "@/viewerapi/Events";
-import { useState } from "react";
+import { useCallback, useState } from "react";
 import { useEffect } from "react";
 
 export function ClientTest() {
@@ -20,6 +20,52 @@ export function ClientTest() {
 function Wrapper() {
   const { actions, views } = useViewer();
   const [hoverOn, setHoverOn] = useState(true);
+
+  const [shiftHeld, setShiftHeld] = useState(false);
+  const [controlHeld, setControlHeld] = useState(false);
+
+  const [items, setItems] = useState<string[]>([]);
+
+  function upHandler({ key }) {
+    if (key === "Shift") setShiftHeld(false);
+    if (key === "Control") setControlHeld(false);
+  }
+
+  const downHandler = useCallback(
+    ({ key }) => {
+      if (key === "Shift") setShiftHeld(true);
+      if (key === "Control") setControlHeld(true);
+      if (key === "Delete") {
+        console.log(items);
+        items.forEach((item) => actions.RemoveEntity(item));
+      }
+    },
+    [actions, items]
+  );
+
+  useEffect(() => {
+    window.addEventListener("keydown", downHandler);
+    window.addEventListener("keyup", upHandler);
+    return () => {
+      window.removeEventListener("keydown", downHandler);
+      window.removeEventListener("keyup", upHandler);
+    };
+  }, [downHandler]);
+
+  useEffect(() => {
+    actions.CreateView("client-view", "Egyedi nézet", {
+      position: [0, 3, 10], // Szemből nézzük
+      target: [0, 0, 0],
+      up: [0, 1, 0],
+      constraints: {
+        smoothTime: 1,
+      },
+    });
+  }, [actions]);
+
+  useEffect(() => {
+    console.log(items);
+  }, [items]);
 
   const randomHex = () =>
     Math.floor(Math.random() * 0xffffff)
@@ -71,17 +117,6 @@ function Wrapper() {
     return composite;
   };
 
-  useEffect(() => {
-    actions.CreateView("client-view", "Egyedi nézet", {
-      position: [0, 3, 10], // Szemből nézzük
-      target: [0, 0, 0],
-      up: [0, 1, 0],
-      constraints: {
-        smoothTime: 1,
-      },
-    });
-  }, [actions]);
-
   return (
     <div
       style={{
@@ -126,10 +161,18 @@ function Wrapper() {
           [Events.StatusMessage]: (payload) => {
             console.log(payload.message);
           },
+          [Events.SelectionChanged]: (payload) => {
+            setItems(payload.guids);
+          },
         }}
         features={{
           hover: { enabled: hoverOn, color: 0xff6600 },
-          selection: { enabled: true, color: 0x00ff00 },
+          selection: {
+            enabled: true,
+            multiple: shiftHeld,
+            remove: controlHeld,
+            color: 0xffff00,
+          },
         }}
       ></Viewer>
     </div>

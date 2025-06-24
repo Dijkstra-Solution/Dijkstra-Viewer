@@ -8,6 +8,7 @@ export abstract class DTOEntity {
   #builtRev = -1;
   #cachedGeometry?: BufferGeometry;
 
+  //TODO - make guid of any Type - user could w
   constructor(guid: string) {
     this.guid = guid;
   }

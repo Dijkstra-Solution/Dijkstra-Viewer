@@ -1,5 +1,9 @@
 import { Canvas } from "@react-three/fiber";
-import { CameraControls, OrthographicCamera, PerspectiveCamera } from "@react-three/drei";
+import {
+  CameraControls,
+  OrthographicCamera,
+  PerspectiveCamera,
+} from "@react-three/drei";
 import React, {
   useCallback,
   useEffect,
@@ -16,24 +20,12 @@ import {
   LineSegments2,
   LineSegmentsGeometry,
 } from "three/examples/jsm/Addons.js";
+import { ViewerFeatures } from "./ViewerFeatures";
 
 interface ViewerProps {
   //TODO - expand feature customizability and write docs
   eventHandlers?: EventHandlerMap;
-  features?: {
-    hover?: {
-      enabled?: boolean;
-      color?: number;
-    };
-    selection?: {
-      enabled?: boolean;
-      color?: number;
-    };
-    snapping?: {
-      enabled?: boolean;
-      
-    };
-  };
+  features?: ViewerFeatures;
   initialView?: string | (() => void);
   style?: React.CSSProperties; // Stílusok a container elemhez
   className?: string; // CSS osztály a container elemhez
@@ -55,8 +47,8 @@ function Viewer({
     dollySpeed?: number;
     draggingSmoothTime?: number;
     smoothTime?: number;
-  }>({}); 
-  
+  }>({});
+
   const { on, off, fire, mergedGeometry, views, actions } = useViewer();
 
   const cameraControlRef = useRef<CameraControls | null>(null);
@@ -87,7 +79,58 @@ function Viewer({
   }, [on, off, eventHandlers]);
   //#endregion
 
+  const createOutlineGeometry = useCallback(
+    (guids: Set<string> | string | null) => {
+      if (!guids || (guids instanceof Set && guids.size === 0)) return null;
+      if (!(guids instanceof Set)) guids = new Set([guids]);
+
+      const positionAttribute = mergedGeometry.attributes.position;
+      const indexArray = mergedGeometry.index;
+      if (!indexArray || !positionAttribute) return null;
+
+      const faceMap: Record<number, string> = mergedGeometry.userData.faceMap;
+      const edgeMap = new Map<
+        string,
+        { a: number; b: number; count: number }
+      >();
+      const triCount = indexArray.count / 3;
+      for (let i = 0; i < triCount; i++) {
+        if (!guids.has(faceMap[i])) continue;
+        const a = indexArray.array[i * 3];
+        const b = indexArray.array[i * 3 + 1];
+        const c = indexArray.array[i * 3 + 2];
+        [
+          [a, b],
+          [b, c],
+          [c, a],
+        ].forEach(([v1, v2]) => {
+          const key = v1 < v2 ? `${v1}_${v2}` : `${v2}_${v1}`;
+          const existing = edgeMap.get(key);
+          if (existing) existing.count++;
+          else edgeMap.set(key, { a: v1, b: v2, count: 1 });
+        });
+      }
+      const positions: number[] = [];
+      edgeMap.forEach(({ a, b, count }) => {
+        if (count == 1) {
+          positions.push(positionAttribute.array[a * 3]);
+          positions.push(positionAttribute.array[a * 3 + 1]);
+          positions.push(positionAttribute.array[a * 3 + 2]);
+          positions.push(positionAttribute.array[b * 3]);
+          positions.push(positionAttribute.array[b * 3 + 1]);
+          positions.push(positionAttribute.array[b * 3 + 2]);
+        }
+      });
+      const lsGeo = new LineSegmentsGeometry();
+      lsGeo.setPositions(positions);
+      return lsGeo;
+    },
+    [mergedGeometry]
+  );
+
   //#region Hover
+  const [hoverIndex, setHoverIndex] = useState<number>(0);
+  const [hoveredObjects, setHoveredObjects] = useState<number[]>([]);
   const [hoveredGUID, setHoveredGUID] = useState<string | null>(null);
   const [hoveredOutlineGeometry, setHoveredOutlineGeometry] =
     useState<LineSegmentsGeometry | null>(null);
@@ -95,92 +138,43 @@ function Viewer({
     () =>
       new LineMaterial({
         color: features?.hover?.color ?? 0xffffff,
-        linewidth: 3,
+        linewidth: features?.hover?.thickness ?? 3,
         depthTest: false,
         resolution: new THREE.Vector2(window.innerWidth, window.innerHeight),
       }),
-    [features?.hover?.color]
+    [features?.hover?.color, features?.hover?.thickness]
   );
+
+  //Hovered Outline Geometry
   useEffect(() => {
-    if (!hoveredGUID || !mergedGeometry) {
-      setHoveredOutlineGeometry((old) => {
-        if (old) old.dispose();
-        return null;
-      });
-      return;
-    }
-    const positionAttribute = mergedGeometry.attributes.position;
-    const indexArray = mergedGeometry.index;
-    if (!indexArray || !positionAttribute) return;
-
-    // const edgeGeometryIndices: number[] = [];
-    // for (let i = 0; i < indexArray.count / 3; i++) {
-    //   if (faceMap[i] === hoveredGUID) {
-    //     edgeGeometryIndices.push(
-    //       indexArray.array[i * 3],
-    //       indexArray.array[i * 3 + 1],
-    //       indexArray.array[i * 3 + 2]
-    //     );
-    //   }
-    // }
-    //
-    // const edgeGeometry = new THREE.BufferGeometry();
-    // edgeGeometry.setAttribute("position", positionAttribute);
-    // edgeGeometry.setIndex(edgeGeometryIndices);
-    // edgeGeometry.computeVertexNormals();
-    // const edges = new THREE.EdgesGeometry(edgeGeometry);
-    //
-    // setHoveredOutlineGeometry((old) => {
-    //   if (old) old.dispose();
-    //   return edges;
-    // });
-    // console.log("recalculating");
-    // edgeGeometry.dispose();
-
-    // return () => {
-    //   edges.dispose();
-    // };
-    const faceMap: Record<number, string> = mergedGeometry.userData.faceMap;
-    const edgeMap = new Map<string, { a: number; b: number; count: number }>();
-    const triCount = indexArray.count / 3;
-    for (let i = 0; i < triCount; i++) {
-      if (faceMap[i] !== hoveredGUID) continue;
-      const a = indexArray.array[i * 3];
-      const b = indexArray.array[i * 3 + 1];
-      const c = indexArray.array[i * 3 + 2];
-      [
-        [a, b],
-        [b, c],
-        [c, a],
-      ].forEach(([v1, v2]) => {
-        const key = v1 < v2 ? `${v1}_${v2}` : `${v2}_${v1}`;
-        const existing = edgeMap.get(key);
-        if (existing) existing.count++;
-        else edgeMap.set(key, { a: v1, b: v2, count: 1 });
-      });
-    }
-    const positions: number[] = [];
-    edgeMap.forEach(({ a, b, count }) => {
-      if (count == 1) {
-        positions.push(positionAttribute.array[a * 3]);
-        positions.push(positionAttribute.array[a * 3 + 1]);
-        positions.push(positionAttribute.array[a * 3 + 2]);
-        positions.push(positionAttribute.array[b * 3]);
-        positions.push(positionAttribute.array[b * 3 + 1]);
-        positions.push(positionAttribute.array[b * 3 + 2]);
-      }
-    });
-    const lsGeo = new LineSegmentsGeometry();
-    lsGeo.setPositions(positions);
+    const lsGeo = createOutlineGeometry(hoveredGUID);
     setHoveredOutlineGeometry((old) => {
       if (old) old.dispose();
       return lsGeo;
     });
+    return () => lsGeo?.dispose();
+  }, [hoveredGUID, createOutlineGeometry]);
 
-    return () => {
-      lsGeo.dispose();
+  //Cycle Hovered Objects    //TODO - bind this to action (ie CycleHover())
+  useEffect(() => {
+    const handleKeyDown = (event: KeyboardEvent) => {
+      if (event.key === "Tab") {
+        event.preventDefault();
+        const newIndex = (hoverIndex + 1) % (hoveredObjects.length ?? 1);
+        setHoverIndex(newIndex);
+        const ind = hoveredObjects[newIndex];
+        if (ind != undefined && ind != null)
+          setHoveredGUID(mergedGeometry?.userData?.faceMap?.[ind]);
+        else setHoveredGUID(null);
+      }
     };
-  }, [hoveredGUID, mergedGeometry]);
+
+    document.addEventListener("keydown", handleKeyDown);
+    return () => {
+      document.removeEventListener("keydown", handleKeyDown);
+    };
+  }, [hoveredObjects, hoverIndex, mergedGeometry]);
+
   //#endregion
 
   //#region Seletion
@@ -193,63 +187,22 @@ function Viewer({
     () =>
       new LineMaterial({
         color: features?.selection?.color ?? 0xffffff,
-        linewidth: 3,
+        linewidth: features?.selection?.thickness ?? 3,
         depthTest: false,
         resolution: new THREE.Vector2(window.innerWidth, window.innerHeight),
       }),
-    [features?.selection?.color]
+    [features?.selection?.color, features?.selection?.thickness]
   );
 
+  //Selected Outline Geometry
   useEffect(() => {
-    if (selectedGUIDs.size === 0 || !mergedGeometry) {
-      setSelectedOutlineGeometry((old) => {
-        if (old) old.dispose();
-        return null;
-      });
-      return;
-    }
-
-    const positionAttribute = mergedGeometry.attributes.position;
-    const indexArray = mergedGeometry.index;
-    if (!indexArray || !positionAttribute) return;
-
-    const faceMap: Record<number, string> = mergedGeometry.userData.faceMap;
-    const edgeMap = new Map<string, { a: number; b: number; count: number }>();
-    const triCount = indexArray.count / 3;
-    for (let i = 0; i < triCount; i++) {
-      if (!selectedGUIDs.has(faceMap[i])) continue;
-      const a = indexArray.array[i * 3];
-      const b = indexArray.array[i * 3 + 1];
-      const c = indexArray.array[i * 3 + 2];
-      [
-        [a, b],
-        [b, c],
-        [c, a],
-      ].forEach(([v1, v2]) => {
-        const key = v1 < v2 ? `${v1}_${v2}` : `${v2}_${v1}`;
-        const existing = edgeMap.get(key);
-        if (existing) existing.count++;
-        else edgeMap.set(key, { a: v1, b: v2, count: 1 });
-      });
-    }
-    const positions: number[] = [];
-    edgeMap.forEach(({ a, b, count }) => {
-      if (count == 1) {
-        positions.push(positionAttribute.array[a * 3]);
-        positions.push(positionAttribute.array[a * 3 + 1]);
-        positions.push(positionAttribute.array[a * 3 + 2]);
-        positions.push(positionAttribute.array[b * 3]);
-        positions.push(positionAttribute.array[b * 3 + 1]);
-        positions.push(positionAttribute.array[b * 3 + 2]);
-      }
-    });
-    const lsGeo = new LineSegmentsGeometry();
-    lsGeo.setPositions(positions);
+    const lsGeo = createOutlineGeometry(selectedGUIDs);
     setSelectedOutlineGeometry((old) => {
       if (old) old.dispose();
       return lsGeo;
     });
-  }, [selectedGUIDs, mergedGeometry]);
+    return () => lsGeo?.dispose();
+  }, [selectedGUIDs, createOutlineGeometry]);
   //#endregion
 
   //#region Sphere on Intersection
@@ -295,50 +248,87 @@ function Viewer({
         raycaster.layers.set(0);
         raycaster.firstHitOnly = false;
         const intersects = raycaster.intersectObjects(scene.children);
+        //TODO - clean up nested if spaghetti
         if (intersects.length > 0) {
-          let guid: string | undefined = undefined;
-          const ind = intersects[0].faceIndex;
-          if (features?.selection?.enabled && ind != undefined && ind != null) {
-            guid = (intersects[0].object as THREE.Mesh).geometry.userData
-              .faceMap?.[ind];
-            setSelectedGUIDs((old) => new Set([...old, guid as string]));
-            fire(Events.EntitySelected, { guid: guid });
+          if (features?.selection?.enabled) {
+            //TODO - handle hover being disabled
+            if (hoveredGUID) {
+              if (features?.selection?.remove) {
+                if (selectedGUIDs.has(hoveredGUID)) {
+                  const newSelection = new Set(selectedGUIDs);
+                  newSelection.delete(hoveredGUID);
+                  setSelectedGUIDs(newSelection);
+                  fire(Events.SelectionChanged, {
+                    guids: Array.from(newSelection),
+                  });
+                }
+              } else if (features?.selection?.multiple) {
+                if (!selectedGUIDs.has(hoveredGUID)) {
+                  const newSelection = [...selectedGUIDs, hoveredGUID];
+                  setSelectedGUIDs(new Set(newSelection));
+                  fire(Events.SelectionChanged, {
+                    guids: newSelection,
+                  });
+                }
+              } else {
+                setSelectedGUIDs(new Set([hoveredGUID]));
+                fire(Events.SelectionChanged, { guids: [hoveredGUID] });
+              }
+            } else {
+              setSelectedGUIDs(new Set());
+              fire(Events.SelectionChanged, { guids: [] });
+            }
           }
-          //TODO - change/remove SceneClicked event
           fire(Events.SceneClicked, {
-            guid: guid,
+            guid: hoveredGUID ?? undefined,
             point: {
-              x: intersects[0].point.x,
-              y: intersects[0].point.y,
-              z: intersects[0].point.z,
+              x: intersects[hoverIndex].point.x,
+              y: intersects[hoverIndex].point.y,
+              z: intersects[hoverIndex].point.z,
             },
             normal: {
-              x: intersects[0].face?.normal.x ?? 0,
-              y: intersects[0].face?.normal.y ?? 0,
-              z: intersects[0].face?.normal.z ?? 0,
+              x: intersects[hoverIndex].face?.normal.x ?? 0,
+              y: intersects[hoverIndex].face?.normal.y ?? 0,
+              z: intersects[hoverIndex].face?.normal.z ?? 0,
             },
           });
-          return;
         } else {
-          if (features?.selection?.enabled) {
+          if (
+            features?.selection?.enabled &&
+            !features?.selection?.remove &&
+            !features?.selection?.multiple
+          ) {
             setSelectedGUIDs(new Set());
-            fire(Events.EntitySelected, { guid: undefined });
+            fire(Events.SelectionChanged, { guids: [] });
           }
-        }
-        const pointOnPlane = raycaster.ray.intersectPlane(
-          new THREE.Plane(new THREE.Vector3(0, 1, 0), 0),
-          new THREE.Vector3()
-        );
+          const pointOnPlane = raycaster.ray.intersectPlane(
+            new THREE.Plane(new THREE.Vector3(0, 1, 0), 0),
+            new THREE.Vector3()
+          );
 
-        if (pointOnPlane) {
-          fire(Events.SceneClicked, {
-            point: { x: pointOnPlane.x, y: pointOnPlane.y, z: pointOnPlane.z },
-            normal: { x: 0, y: 1, z: 0 },
-          });
+          if (pointOnPlane) {
+            fire(Events.SceneClicked, {
+              point: {
+                x: pointOnPlane.x,
+                y: pointOnPlane.y,
+                z: pointOnPlane.z,
+              },
+              normal: { x: 0, y: 1, z: 0 },
+            });
+          }
         }
       }
     },
-    [getMouse, features?.selection, fire]
+    [
+      features?.selection?.enabled,
+      features?.selection?.multiple,
+      features?.selection?.remove,
+      fire,
+      getMouse,
+      hoverIndex,
+      hoveredGUID,
+      selectedGUIDs,
+    ]
   );
 
   const handleMouseMove = useCallback(
@@ -354,6 +344,12 @@ function Viewer({
       raycaster.setFromCamera(mouse, camera);
       const intersects = raycaster.intersectObjects(scene.children);
       if (intersects.length > 0) {
+        setHoveredObjects(
+          intersects
+            .map((i) => i.faceIndex)
+            .filter((i) => i != undefined && i != null)
+        );
+
         let guid = undefined;
         const ind = intersects[0].faceIndex;
         if (ind != undefined && ind != null) {
@@ -363,6 +359,8 @@ function Viewer({
         setHoveredGUID(guid ?? null);
         setIntersectionPoint(intersects[0].point);
       } else {
+        setHoverIndex(0);
+        setHoveredObjects([]);
         setHoveredGUID(null);
         setIntersectionPoint(null);
       }
@@ -380,11 +378,11 @@ function Viewer({
         const settings = currentView.getViewSettings();
 
         setUseOrthographic(!!settings.useOrthographicCamera);
-        
+
         if (Array.isArray(settings.position) && settings.position.length >= 3) {
           setCameraPosition(settings.position);
         }
-        
+
         if (Array.isArray(settings.up) && settings.up.length >= 3) {
           setCameraUp(settings.up);
         }
@@ -406,14 +404,13 @@ function Viewer({
     };
   }, [on, off, views]);
 
-  
   // Setup camera controls monitoring - only runs once on mount
   useEffect(() => {
     // Store the references to avoid closure issues
     const currentViews = views;
     const currentActions = actions;
     const currentInitialView = initialView;
-    
+
     // Try to setup camera controls when available
     const checkInterval = setInterval(() => {
       if (cameraControlRef.current) {
@@ -432,7 +429,7 @@ function Viewer({
             // ViewManager handles the event firing internally
           }
         }
-        
+
         clearInterval(checkInterval);
       }
     }, 100); // Check every 100ms
@@ -442,17 +439,18 @@ function Viewer({
   }, []);
 
   // Container stílus a felhasználói stílus és az alapértelmezett értékek kombinálásával
-
   const containerStyles: React.CSSProperties = {
     position: "relative",
+    display: "flex",
+    flexDirection: "column",
     margin: "10px",
+    overflow: "hidden",
+
     flex: 1,
     ...style,
   };
 
-  // TODO - track light position based on user time
   const angle = (3 * Math.PI) / 4;
-
   return (
     <div style={containerStyles} ref={containerRef}>
       <Canvas
@@ -473,8 +471,6 @@ function Viewer({
           position={[100 * Math.cos(angle), 100 * Math.sin(angle), 0]}
           intensity={Math.PI}
         />
-
-        {/* <pointLight position={[-10, 10, -10]} decay={0} intensity={Math.PI} /> */}
         <mesh
           geometry={mergedGeometry}
           material={mergedGeometryMaterial}
@@ -517,18 +513,17 @@ function Viewer({
 
         {/* Conditional camera rendering based on useOrthographic state */}
         {useOrthographic ? (
-          <OrthographicCamera 
-            makeDefault 
+          <OrthographicCamera
+            makeDefault
             position={[cameraPosition[0], cameraPosition[1], cameraPosition[2]]}
             up={[cameraUp[0], cameraUp[1], cameraUp[2]]}
             zoom={12}
             near={0.1}
             far={1000}
-
           />
         ) : (
-          <PerspectiveCamera 
-            makeDefault 
+          <PerspectiveCamera
+            makeDefault
             position={[cameraPosition[0], cameraPosition[1], cameraPosition[2]]}
             up={[cameraUp[0], cameraUp[1], cameraUp[2]]}
             fov={75}
@@ -536,19 +531,40 @@ function Viewer({
             far={1000}
           />
         )}
-        <CameraControls 
+        <CameraControls
           ref={cameraControlRef}
-          azimuthRotateSpeed={cameraConstraints.azimuthRotateSpeed !== undefined ? cameraConstraints.azimuthRotateSpeed : 1.0}
-          polarRotateSpeed={cameraConstraints.polarRotateSpeed !== undefined ? cameraConstraints.polarRotateSpeed : 1.0} 
-          truckSpeed={cameraConstraints.truckSpeed !== undefined ? cameraConstraints.truckSpeed : 1.0}
-          dollySpeed={cameraConstraints.dollySpeed !== undefined ? cameraConstraints.dollySpeed : 1.0}
-          draggingSmoothTime={cameraConstraints.draggingSmoothTime !== undefined ? cameraConstraints.draggingSmoothTime : 0}
-          smoothTime={cameraConstraints.smoothTime !== undefined ? cameraConstraints.smoothTime : 0}
+          azimuthRotateSpeed={
+            cameraConstraints.azimuthRotateSpeed !== undefined
+              ? cameraConstraints.azimuthRotateSpeed
+              : 1.0
+          }
+          polarRotateSpeed={
+            cameraConstraints.polarRotateSpeed !== undefined
+              ? cameraConstraints.polarRotateSpeed
+              : 1.0
+          }
+          truckSpeed={
+            cameraConstraints.truckSpeed !== undefined
+              ? cameraConstraints.truckSpeed
+              : 1.0
+          }
+          dollySpeed={
+            cameraConstraints.dollySpeed !== undefined
+              ? cameraConstraints.dollySpeed
+              : 1.0
+          }
+          draggingSmoothTime={
+            cameraConstraints.draggingSmoothTime !== undefined
+              ? cameraConstraints.draggingSmoothTime
+              : 0
+          }
+          smoothTime={
+            cameraConstraints.smoothTime !== undefined
+              ? cameraConstraints.smoothTime
+              : 0
+          }
         />
-        <gridHelper 
-          args={[20, 20, '#888888', '#444444']}
-          raycast={() => {}}
-        />
+        <gridHelper args={[20, 20, "#888888", "#444444"]} raycast={() => {}} />
       </Canvas>
     </div>
   );

@@ -31,6 +31,7 @@ function reducer(state: State, action: GeometryAction): State {
       return { byId: next, rev: rev + 1 };
     }
     case "remove": {
+      console.log(action);
       if (!byId.has(action.guid)) return state;
       const next = new Map(byId);
       next.delete(action.guid);

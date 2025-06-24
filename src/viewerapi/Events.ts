@@ -1,8 +1,7 @@
 import { BufferGeometry } from "three";
-import { ViewType } from "./EventTypes";
 
 export const Events = {
-  EntitySelected: "EntitySelected",
+  SelectionChanged: "EntitySelected",
   SceneClicked: "SceneClicked",
   SceneUpdated: "SceneUpdated",
   StatusMessage: "StatusMessage",
@@ -16,7 +15,7 @@ export const Events = {
 export type EventType = (typeof Events)[keyof typeof Events];
 
 export type EventPayloads = {
-  [Events.EntitySelected]: { guid?: string };
+  [Events.SelectionChanged]: { guids: string[] };
   [Events.SceneClicked]: {
     guid?: string;
     point: { x: number; y: number; z: number };
