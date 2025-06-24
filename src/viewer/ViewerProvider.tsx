@@ -127,7 +127,6 @@ export function ViewerProvider({ children }: { children: React.ReactNode }) {
       const clickHandler = ({
         guid,
         point,
-        normal,
       }: {
         guid: string;
         point: { x: number; y: number; z: number };
@@ -170,7 +169,6 @@ export function ViewerProvider({ children }: { children: React.ReactNode }) {
       const faces: Face[] = [];
       const clickHandler = ({
         guid,
-        point,
         normal,
       }: {
         guid: string;
@@ -248,7 +246,6 @@ export function ViewerProvider({ children }: { children: React.ReactNode }) {
     [viewManager]
   );
   const createView = useCallback(
-    (viewId: string, displayName?: string, settings?: ViewSettings) => {
     (viewId: string, displayName?: string, settings?: ViewSettings) => {
       // If viewId is a standard ViewType and no displayName/settings, just set the view
       if (typeof viewId === "string" && !displayName && !settings) {
