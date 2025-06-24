@@ -8,6 +8,7 @@ import { generateUUID } from "three/src/math/MathUtils.js";
 import { Events } from "@/viewerapi/Events";
 import { useCallback, useState } from "react";
 import { useEffect } from "react";
+import { useViews } from "@/viewer/hooks/useViews";
 
 export function ClientTest() {
   return (
@@ -18,7 +19,8 @@ export function ClientTest() {
 }
 
 function Wrapper() {
-  const { actions, views } = useViewer();
+  const { actions,} = useViewer();
+  const { viewList, currentViewId } = useViews();
   const [hoverOn, setHoverOn] = useState(true);
 
   const [shiftHeld, setShiftHeld] = useState(false);
@@ -68,9 +70,9 @@ function Wrapper() {
   }, [items]);
 
   const randomHex = () =>
-    Math.floor(Math.random() * 0xffffff)
-      .toString(16)
-      .padEnd(6, "0");
+  Math.floor(Math.random() * 0xffffff)
+    .toString(16)
+    .padEnd(6, "0");
 
   const createBox = (point: { x: number; y: number; z: number }) => {
     const blc = { x: point.x - 0.5, y: point.y, z: point.z + 0.5 };
@@ -146,17 +148,24 @@ function Wrapper() {
         >
           Toggle Hover
         </button>
-        {views.getAllViews().map((view) => (
+        {viewList.map((view) => (
+          <div
+            key={view.viewId}>
           <button
-            key={view.viewId}
             onClick={() => actions.SetView(view.viewId)}
           >
-            {view.displayName}
+              {view.displayName}
+            </button>
+          <button onClick={() => actions.DeleteView(view.viewId)}>
+            Delete
           </button>
+        </div>
         ))}
+      <label>{currentViewId}</label>
       </div>
 
       <Viewer
+      initialView={"perspective"}
         eventHandlers={{
           [Events.StatusMessage]: (payload) => {
             console.log(payload.message);

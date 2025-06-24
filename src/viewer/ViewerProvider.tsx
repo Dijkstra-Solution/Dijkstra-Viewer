@@ -128,7 +128,6 @@ export function ViewerProvider({ children }: { children: React.ReactNode }) {
       const clickHandler = ({
         guid,
         point,
-        normal,
       }: {
         guid: string;
         point: { x: number; y: number; z: number };
@@ -171,7 +170,6 @@ export function ViewerProvider({ children }: { children: React.ReactNode }) {
       const faces: Face[] = [];
       const clickHandler = ({
         guid,
-        point,
         normal,
       }: {
         guid: string;
@@ -237,15 +235,16 @@ export function ViewerProvider({ children }: { children: React.ReactNode }) {
     (viewId: string) => {
       viewManager.current.unregisterView(viewId);
       fire(Events.ViewDeleted, { view: viewId });
+      fire(Events.ViewDeleted, { view: viewId });
     },
     [viewManager, fire]
   );
   const setView = useCallback(
     (viewId: string, animate: boolean = false) => {
-      viewManager.current.setView(viewId, animate);
-      fire(Events.ViewChanged, { view: viewId });
+      const result = viewManager.current.setView(viewId, animate);
+      return result;
     },
-    [viewManager, fire]
+    [viewManager]
   );
   const createView = useCallback(
     (viewId: string, displayName?: string, settings?: ViewSettings) => {
@@ -253,6 +252,7 @@ export function ViewerProvider({ children }: { children: React.ReactNode }) {
       if (typeof viewId === "string" && !displayName && !settings) {
         return viewManager.current.setView(viewId);
       }
+
 
       // Handle custom view creation
       if (
@@ -277,6 +277,7 @@ export function ViewerProvider({ children }: { children: React.ReactNode }) {
         if (registered) {
           // Notify about the view creation
           fire(Events.ViewCreated, { view: viewId });
+          fire(Events.ViewCreated, { view: viewId });
         }
 
         return registered;
@@ -289,6 +290,14 @@ export function ViewerProvider({ children }: { children: React.ReactNode }) {
     [viewManager, fire]
   );
 
+  const resetView = useCallback((viewId: string, animate: boolean = false) => {
+    viewManager.current.resetView(viewId, animate);
+  }, [viewManager]);
+
+  const resetAllViews = useCallback(() => {
+    viewManager.current.resetAllViews();
+  }, [viewManager]);
+
   const actions = useMemo(
     () => ({
       SelectPoints: selectPoints,
@@ -298,6 +307,8 @@ export function ViewerProvider({ children }: { children: React.ReactNode }) {
       AddEntity: addEntity,
       RemoveEntity: removeEntity,
       ClearEntities: clearEntities,
+      ResetView: resetView,
+      ResetAllViews: resetAllViews,
       SetView: setView,
       CreateView: createView,
       DeleteView: deleteView,
@@ -309,6 +320,8 @@ export function ViewerProvider({ children }: { children: React.ReactNode }) {
       addEntity,
       removeEntity,
       clearEntities,
+      resetView,
+      resetAllViews,
       setView,
       createView,
       deleteView,
@@ -329,12 +342,20 @@ export function ViewerProvider({ children }: { children: React.ReactNode }) {
         getView: (viewId: string) => viewManager.current.getView(viewId),
         getCurrentView: () => viewManager.current.getCurrentView(),
 
-        deleteView: (viewId: string) =>
-          viewManager.current.unregisterView(viewId),
-
         // Internal API
-        setCameraControlsRef: (ref) =>
-          viewManager.current.setCameraControlsRef(ref),
+        setCameraControlsRef: (ref) => viewManager.current.setCameraControlsRef(ref),
+        getSavedCameraState: (viewId) => {
+          const state = viewManager.current.getSavedCameraState(viewId);
+          // Return undefined if no state exists
+          if (!state) return undefined;
+
+          return {
+            position: state.position,
+            target: state.target,
+            up: state.up,
+            zoom: state.zoom ?? 1
+          };
+        },
       },
     }),
     [on, off, fire, actions, mergedGeometry, viewManager]

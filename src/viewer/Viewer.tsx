@@ -40,6 +40,8 @@ function Viewer({
   const [useOrthographic, setUseOrthographic] = useState(false);
   const [cameraPosition, setCameraPosition] = useState([0, 0, 5]);
   const [cameraUp, setCameraUp] = useState([0, 1, 0]);
+  const [cameraZoom, setCameraZoom] = useState(12);
+  const [cameraTarget, setCameraTarget] = useState([0, 0, 0]);
   const [cameraConstraints, setCameraConstraints] = useState<{
     azimuthRotateSpeed?: number;
     polarRotateSpeed?: number;
@@ -373,26 +375,14 @@ function Viewer({
   useEffect(() => {
     // Create a custom event handler for the view changed event
     const handleViewChanged = (data: { view: string }) => {
-      const currentView = views.getView(data.view);
-      if (currentView) {
-        const settings = currentView.getViewSettings();
-
-        setUseOrthographic(!!settings.useOrthographicCamera);
-
-        if (Array.isArray(settings.position) && settings.position.length >= 3) {
-          setCameraPosition(settings.position);
-        }
-
-        if (Array.isArray(settings.up) && settings.up.length >= 3) {
-          setCameraUp(settings.up);
-        }
-
-        if (settings.constraints) {
-          setCameraConstraints(settings.constraints);
-        } else {
-          setCameraConstraints({});
-        }
-      }
+      const settings = views.getView(data.view)!.getViewSettings();
+      const saved = views.getSavedCameraState(data.view);
+      setUseOrthographic(!!settings.useOrthographicCamera);
+      setCameraPosition(saved?.position ?? settings.position);
+      setCameraUp(saved?.up ?? settings.up);
+      setCameraZoom(saved?.zoom ?? 12);
+      setCameraConstraints(settings.constraints ?? {});
+      setCameraTarget(saved?.target ?? settings.target);
     };
 
     // Register for the ViewChanged event
@@ -402,21 +392,16 @@ function Viewer({
       // Cleanup event listener
       off("ViewChanged", handleViewChanged);
     };
-  }, [on, off, views]);
+  }, [on, off, views, cameraTarget]);
 
   // Setup camera controls monitoring - only runs once on mount
   useEffect(() => {
-    // Store the references to avoid closure issues
-    const currentViews = views;
-    const currentActions = actions;
+    // Store the references to avoid closure issues;
     const currentInitialView = initialView;
 
     // Try to setup camera controls when available
     const checkInterval = setInterval(() => {
       if (cameraControlRef.current) {
-        // Set camera controls reference to the ViewManager
-        currentViews.setCameraControlsRef(cameraControlRef);
-
         // Set initial view once camera controls are available
         if (currentInitialView) {
           if (typeof currentInitialView === "function") {
@@ -424,9 +409,7 @@ function Viewer({
             currentInitialView();
           } else {
             // String feature with ViewManager
-            currentActions.SetView(currentInitialView);
-            console.log("set initial view - should only happen once");
-            // ViewManager handles the event firing internally
+            actions.SetView(currentInitialView);
           }
         }
 
@@ -436,7 +419,22 @@ function Viewer({
 
     // Cleanup interval when component unmounts
     return () => clearInterval(checkInterval);
+    //eslint-disable-next-line react-hooks/exhaustive-deps
   }, []);
+
+  useEffect(() => {
+    const checkInterval = setInterval(() => {
+      if (cameraControlRef.current) {
+        // Set camera controls reference to the ViewManager
+        views.setCameraControlsRef(cameraControlRef);
+
+        clearInterval(checkInterval);
+      }
+    }, 100); // Check every 100ms
+
+    // Cleanup interval when component unmounts
+    return () => clearInterval(checkInterval);
+  }, [useOrthographic, views]);
 
   // Container stílus a felhasználói stílus és az alapértelmezett értékek kombinálásával
   const containerStyles: React.CSSProperties = {
@@ -450,10 +448,58 @@ function Viewer({
     ...style,
   };
 
+  // Új useEffect a cameraTarget változásához
+  useEffect(() => {
+    if (cameraControlRef.current) {
+      cameraControlRef.current.setTarget(
+        cameraTarget[0],
+        cameraTarget[1],
+        cameraTarget[2],
+        true
+      );
+      console.log(`CameraControls target beállítva: ${cameraTarget}`);
+    }
+  }, [cameraTarget, cameraControlRef]);
+
+  useEffect(() => {
+    if (useOrthographic) {
+      console.log(`Expected cameraPosition: ${cameraPosition}`);
+      console.log(`Expected cameraUp: ${cameraUp}`);
+      console.log(`Expected cameraTarget: ${cameraTarget}`);
+
+      // Give the camera time to actually move to the new position before logging
+      const timeoutId = setTimeout(() => {
+        if (cameraControlRef.current) {
+          console.log(`Camera ID: ${cameraControlRef.current.camera.id}`);
+          console.log(
+            `Actual camera position: ${cameraControlRef.current.camera.position.x},${cameraControlRef.current.camera.position.y},${cameraControlRef.current.camera.position.z}`
+          );
+          console.log(cameraControlRef.current.getTarget(new THREE.Vector3()));
+        }
+      }, 300); // Add a small delay to allow camera movement to complete
+
+      return () => clearTimeout(timeoutId);
+    }
+  }, [useOrthographic, cameraPosition, cameraUp, cameraControlRef]);
+
+  // Új useEffect a cameraTarget változásához
+  useEffect(() => {
+    if (cameraControlRef.current) {
+      cameraControlRef.current.setTarget(
+        cameraTarget[0],
+        cameraTarget[1],
+        cameraTarget[2],
+        true
+      );
+      console.log(`CameraControls target beállítva: ${cameraTarget}`);
+    }
+  }, [cameraTarget, cameraControlRef]);
+
   const angle = (3 * Math.PI) / 4;
   return (
     <div style={containerStyles} ref={containerRef}>
       <Canvas
+        //TODO - initial view setup
         camera={{ position: [0, 0, 5] }}
         onCreated={({ scene, camera, raycaster }) => {
           camera.layers.enableAll();
@@ -511,26 +557,24 @@ function Viewer({
           </mesh>
         )}
 
+        {/*TODO Switch flash */}
         {/* Conditional camera rendering based on useOrthographic state */}
-        {useOrthographic ? (
-          <OrthographicCamera
-            makeDefault
-            position={[cameraPosition[0], cameraPosition[1], cameraPosition[2]]}
-            up={[cameraUp[0], cameraUp[1], cameraUp[2]]}
-            zoom={12}
-            near={0.1}
-            far={1000}
-          />
-        ) : (
-          <PerspectiveCamera
-            makeDefault
-            position={[cameraPosition[0], cameraPosition[1], cameraPosition[2]]}
-            up={[cameraUp[0], cameraUp[1], cameraUp[2]]}
-            fov={75}
-            near={0.1}
-            far={1000}
-          />
-        )}
+        <OrthographicCamera
+          makeDefault={useOrthographic}
+          position={[cameraPosition[0], cameraPosition[1], cameraPosition[2]]}
+          up={[cameraUp[0], cameraUp[1], cameraUp[2]]}
+          zoom={cameraZoom}
+          near={0.1}
+          far={1000}
+        />
+        <PerspectiveCamera
+          makeDefault={!useOrthographic}
+          position={[cameraPosition[0], cameraPosition[1], cameraPosition[2]]}
+          up={[cameraUp[0], cameraUp[1], cameraUp[2]]}
+          fov={75}
+          near={0.1}
+          far={1000}
+        />
         <CameraControls
           ref={cameraControlRef}
           azimuthRotateSpeed={

@@ -9,9 +9,11 @@ export class PerspectiveView extends BaseView {
 
   getViewSettings(): ViewSettings {
     return {
-      position: [5, 5, 5],
+      position: [0, 0, 5],
       target: [0, 0, 0],
       up: [0, 1, 0],
+      constraints: {
+      }
     };
   }
 }

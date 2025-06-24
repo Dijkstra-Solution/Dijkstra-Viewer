@@ -57,6 +57,10 @@ export const viewerActions = {
   AddEntity: unbound as (entity: DTOEntity) => void,
   RemoveEntity: unbound as (guid: string) => void,
   ClearEntities: unbound as () => void,
+
+  // View management
+  ResetView: unbound as (viewId: string, animate?: boolean) => void,
+  ResetAllViews: unbound as () => void,
   SetView: unbound as (viewId: string, animate?: boolean) => void,
   CreateView: unbound as (
     viewOrId: string,
