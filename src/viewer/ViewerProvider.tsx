@@ -214,12 +214,22 @@ export function ViewerProvider({ children }: { children: React.ReactNode }) {
     [viewManager, fire]
   );
 
+  const resetView = useCallback((viewId: string, animate: boolean = false) => {
+    viewManager.current.resetView(viewId, animate);
+  }, [viewManager]);
+
+  const resetAllViews = useCallback(() => {
+    viewManager.current.resetAllViews();
+  }, [viewManager]);
+
   const actions = useMemo(
     () => ({
       SelectPoints: selectPoints,
       AddEntity: addEntity,
       RemoveEntity: removeEntity,
       ClearEntities: clearEntities,
+      ResetView: resetView,
+      ResetAllViews: resetAllViews,
       SetView: setView,
       CreateView: createView,
       DeleteView: deleteView,
@@ -229,6 +239,8 @@ export function ViewerProvider({ children }: { children: React.ReactNode }) {
       addEntity,
       removeEntity,
       clearEntities,
+      resetView,
+      resetAllViews,
       setView,
       createView,
       deleteView,
