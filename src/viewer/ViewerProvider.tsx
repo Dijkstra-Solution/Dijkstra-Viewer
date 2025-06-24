@@ -161,28 +161,24 @@ export function ViewerProvider({ children }: { children: React.ReactNode }) {
   const deleteView = useCallback(
     (viewId: string) => {
       viewManager.current.unregisterView(viewId);
-      fire(Events.ViewDeleted, { view: viewId});
+      fire(Events.ViewDeleted, { view: viewId });
     },
     [viewManager, fire]
   );
   const setView = useCallback(
     (viewId: string, animate: boolean = false) => {
-      viewManager.current.setView(viewId, animate);
-      fire(Events.ViewChanged, { view: viewId});
+      const result = viewManager.current.setView(viewId, animate);
+      return result;
     },
-    [viewManager, fire]
+    [viewManager]
   );
   const createView = useCallback(
-    (
-      viewId: string,
-      displayName?: string,
-      settings?: ViewSettings
-    ) => {
+    (viewId: string, displayName?: string, settings?: ViewSettings) => {
       // If viewId is a standard ViewType and no displayName/settings, just set the view
       if (typeof viewId === "string" && !displayName && !settings) {
         return viewManager.current.setView(viewId);
       }
-      
+
       // Handle custom view creation
       if (
         typeof viewId === "string" &&
@@ -205,7 +201,7 @@ export function ViewerProvider({ children }: { children: React.ReactNode }) {
 
         if (registered) {
           // Notify about the view creation
-          fire(Events.ViewCreated, { view: viewId});
+          fire(Events.ViewCreated, { view: viewId });
         }
 
         return registered;
@@ -252,11 +248,21 @@ export function ViewerProvider({ children }: { children: React.ReactNode }) {
         getAllViews: () => viewManager.current.getAllViews(),
         getView: (viewId: string) => viewManager.current.getView(viewId),
         getCurrentView: () => viewManager.current.getCurrentView(),
-        
-        deleteView: (viewId: string) => viewManager.current.unregisterView(viewId),
-        
+
         // Internal API
         setCameraControlsRef: (ref) => viewManager.current.setCameraControlsRef(ref),
+        getSavedCameraState: (viewId) => {
+          const state = viewManager.current.getSavedCameraState(viewId);
+          // Return undefined if no state exists
+          if (!state) return undefined;
+
+          return {
+            position: state.position,
+            target: state.target,
+            up: state.up,
+            zoom: state.zoom ?? 1
+          };
+        },
       },
     }),
     [on, off, fire, actions, mergedGeometry, viewManager]

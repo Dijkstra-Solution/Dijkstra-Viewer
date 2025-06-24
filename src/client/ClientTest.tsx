@@ -7,6 +7,7 @@ import { DTOComposite } from "@/viewerapi/dto/DTOComposite";
 import { generateUUID } from "three/src/math/MathUtils.js";
 import { Events } from "@/viewerapi/Events";
 import { useEffect } from "react";
+import { useViews } from "@/viewer/hooks/useViews";
 
 export function ClientTest() {
   return (
@@ -16,14 +17,14 @@ export function ClientTest() {
   );
 }
 
-
 function Wrapper() {
-  const { actions, views } = useViewer();
+  const { actions,} = useViewer();
+  const { viewList, currentViewId } = useViews();
 
   const randomHex = () =>
-    Math.floor(Math.random() * 0xffffff)
-      .toString(16)
-      .padEnd(6, "0");
+  Math.floor(Math.random() * 0xffffff)
+    .toString(16)
+    .padEnd(6, "0");
 
   const createBox = (point: number[]) => {
     const blc = { x: point[0] - 0.5, y: point[1], z: point[2] + 0.5 };
@@ -94,18 +95,33 @@ function Wrapper() {
   };
 
   useEffect(() => {
-    actions.CreateView(
-      "client-view",
-      "Egyedi nézet",
-      {
-        position: [0, 3, 10], // Szemből nézzük
-        target: [0, 0, 0],
-        up: [0, 1, 0],
-        constraints: {
-          smoothTime: 1,
-        },
-      }
-    );
+      // Létrehozzuk a nézetet
+      actions.CreateView(
+        "client-view",
+        "Egyedi nézet",
+        {
+          position: [0, 3, 10], // Szemből nézzük
+          target: [0, 0, 0],
+          up: [0, 1, 0],
+          constraints:{
+            smoothTime: 1
+          }
+        }
+      );
+      actions.CreateView(
+        "top-persp",
+        "Top Perspective",
+        {
+          position: [0, 10, 0],
+          target: [0, 0, 0],
+          up: [0, 0, -1],
+          constraints:{
+            smoothTime: 1,
+            azimuthRotateSpeed: 0,
+            polarRotateSpeed: 0,
+          }
+        }
+      );
   }, [actions]);
 
   return (
@@ -127,12 +143,19 @@ function Wrapper() {
       >
         Create Box
       </button>
-      {views.getAllViews().map((view) => (
-        <button key={view.viewId} onClick={() => actions.SetView(view.viewId)}>
-          {view.displayName}
-        </button>
+      {viewList.map((view) => (
+        <div key={view.viewId}>
+          <button onClick={() => actions.SetView(view.viewId)}>
+            {view.displayName}
+          </button>
+          <button onClick={() => actions.DeleteView(view.viewId)}>
+            Delete
+          </button>
+        </div>
       ))}
+      <label>{currentViewId}</label>
       <Viewer
+      initialView={"perspective"}
         eventHandlers={{
           [Events.StatusMessage]: (payload) => {
             console.log(payload.message);
