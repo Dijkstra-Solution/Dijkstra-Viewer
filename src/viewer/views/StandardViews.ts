@@ -12,8 +12,6 @@ export class PerspectiveView extends BaseView {
       position: [0, 0, 5],
       target: [0, 0, 0],
       up: [0, 1, 0],
-      constraints: {
-      }
     };
   }
 }
@@ -32,7 +30,6 @@ export class TopView extends BaseView {
       up: [0, 0, -1],
       useOrthographicCamera: true,
       constraints: {
-        // Restrict rotation in top view
         azimuthRotateSpeed: 0,
         polarRotateSpeed: 0,
       },

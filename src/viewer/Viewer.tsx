@@ -179,7 +179,7 @@ function Viewer({
 
   //#endregion
 
-  //#region Seletion
+  //#region Selection
   const [selectedGUIDs, setSelectedGUIDs] = useState<Set<string>>(
     new Set<string>()
   );
@@ -371,6 +371,7 @@ function Viewer({
   );
   //#endregion
 
+  //#region View Management
   // Handle camera type changes from view settings
   useEffect(() => {
     // Create a custom event handler for the view changed event
@@ -403,16 +404,9 @@ function Viewer({
     const checkInterval = setInterval(() => {
       if (cameraControlRef.current) {
         // Set initial view once camera controls are available
-        if (currentInitialView) {
-          if (typeof currentInitialView === "function") {
-            // Function feature direct call
-            currentInitialView();
-          } else {
-            // String feature with ViewManager
-            actions.SetView(currentInitialView);
-          }
+        if (typeof currentInitialView === "string") {
+          actions.SetView(currentInitialView);
         }
-
         clearInterval(checkInterval);
       }
     }, 100); // Check every 100ms
@@ -435,6 +429,7 @@ function Viewer({
     // Cleanup interval when component unmounts
     return () => clearInterval(checkInterval);
   }, [useOrthographic, views]);
+  //#endregion
 
   // Container stílus a felhasználói stílus és az alapértelmezett értékek kombinálásával
   const containerStyles: React.CSSProperties = {
@@ -447,53 +442,6 @@ function Viewer({
     flex: 1,
     ...style,
   };
-
-  // Új useEffect a cameraTarget változásához
-  useEffect(() => {
-    if (cameraControlRef.current) {
-      cameraControlRef.current.setTarget(
-        cameraTarget[0],
-        cameraTarget[1],
-        cameraTarget[2],
-        true
-      );
-      console.log(`CameraControls target beállítva: ${cameraTarget}`);
-    }
-  }, [cameraTarget, cameraControlRef]);
-
-  useEffect(() => {
-    if (useOrthographic) {
-      console.log(`Expected cameraPosition: ${cameraPosition}`);
-      console.log(`Expected cameraUp: ${cameraUp}`);
-      console.log(`Expected cameraTarget: ${cameraTarget}`);
-
-      // Give the camera time to actually move to the new position before logging
-      const timeoutId = setTimeout(() => {
-        if (cameraControlRef.current) {
-          console.log(`Camera ID: ${cameraControlRef.current.camera.id}`);
-          console.log(
-            `Actual camera position: ${cameraControlRef.current.camera.position.x},${cameraControlRef.current.camera.position.y},${cameraControlRef.current.camera.position.z}`
-          );
-          console.log(cameraControlRef.current.getTarget(new THREE.Vector3()));
-        }
-      }, 300); // Add a small delay to allow camera movement to complete
-
-      return () => clearTimeout(timeoutId);
-    }
-  }, [useOrthographic, cameraPosition, cameraUp, cameraControlRef]);
-
-  // Új useEffect a cameraTarget változásához
-  useEffect(() => {
-    if (cameraControlRef.current) {
-      cameraControlRef.current.setTarget(
-        cameraTarget[0],
-        cameraTarget[1],
-        cameraTarget[2],
-        true
-      );
-      console.log(`CameraControls target beállítva: ${cameraTarget}`);
-    }
-  }, [cameraTarget, cameraControlRef]);
 
   const angle = (3 * Math.PI) / 4;
   return (

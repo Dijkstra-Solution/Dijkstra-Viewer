@@ -19,7 +19,7 @@ export function ClientTest() {
 }
 
 function Wrapper() {
-  const { actions,} = useViewer();
+  const { actions } = useViewer();
   const { viewList, currentViewId } = useViews();
   const [hoverOn, setHoverOn] = useState(true);
 
@@ -70,9 +70,9 @@ function Wrapper() {
   }, [items]);
 
   const randomHex = () =>
-  Math.floor(Math.random() * 0xffffff)
-    .toString(16)
-    .padEnd(6, "0");
+    Math.floor(Math.random() * 0xffffff)
+      .toString(16)
+      .padEnd(6, "0");
 
   const createBox = (point: { x: number; y: number; z: number }) => {
     const blc = { x: point.x - 0.5, y: point.y, z: point.z + 0.5 };
@@ -149,23 +149,20 @@ function Wrapper() {
           Toggle Hover
         </button>
         {viewList.map((view) => (
-          <div
-            key={view.viewId}>
-          <button
-            onClick={() => actions.SetView(view.viewId)}
-          >
+          <div key={view.viewId}>
+            <button onClick={() => actions.SetView(view.viewId)}>
               {view.displayName}
             </button>
-          <button onClick={() => actions.DeleteView(view.viewId)}>
-            Delete
-          </button>
-        </div>
+            <button onClick={() => actions.DeleteView(view.viewId)}>
+              Delete
+            </button>
+          </div>
         ))}
-      <label>{currentViewId}</label>
+        <label>{currentViewId}</label>
       </div>
 
       <Viewer
-      initialView={"perspective"}
+        initialView={"perspective"}
         eventHandlers={{
           [Events.StatusMessage]: (payload) => {
             console.log(payload.message);
