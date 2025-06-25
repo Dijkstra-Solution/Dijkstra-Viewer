@@ -20,7 +20,10 @@ export class ViewManager {
    * This allows us to restore the exact camera when the user switches back to a
    * previously visited view.
    */
-  private viewCameraStates: Map<string, { position: number[]; target: number[]; up: number[]; zoom?: number }> = new Map();
+  private viewCameraStates: Map<
+    string,
+    { position: number[]; target: number[]; up: number[]; zoom?: number }
+  > = new Map();
   private fireEvent: <T extends EventType>(
     event: T,
     payload: EventPayloads[T]
@@ -46,14 +49,20 @@ export class ViewManager {
   setCameraControlsRef(ref: RefObject<CameraControls | null>): void {
     // Detach previous listener (if any)
     if (this.cameraControlsRef?.current) {
-      this.cameraControlsRef.current.removeEventListener("control", this.handleControlsChange);
+      this.cameraControlsRef.current.removeEventListener(
+        "control",
+        this.handleControlsChange
+      );
     }
 
     this.cameraControlsRef = ref;
 
     // Attach to the new ref (if provided)
     if (this.cameraControlsRef?.current) {
-      this.cameraControlsRef.current.addEventListener("control", this.handleControlsChange);
+      this.cameraControlsRef.current.addEventListener(
+        "control",
+        this.handleControlsChange
+      );
     }
   }
 
@@ -103,7 +112,13 @@ export class ViewManager {
    * @param useDefaults If true, use default position/target values instead of saved state (default: false)
    * @returns True if the view was set/registered, false if an error occurred
    */
-  setView(viewId: string | BaseView, animate: boolean = false, customSmoothTime?: number, activateView: boolean = true, useDefaults: boolean = false): boolean {
+  setView(
+    viewId: string | BaseView,
+    animate: boolean = false,
+    customSmoothTime?: number,
+    activateView: boolean = true,
+    useDefaults: boolean = false
+  ): boolean {
     let id: string;
     let view: BaseView;
 
@@ -128,9 +143,6 @@ export class ViewManager {
       }
     }
 
-    
-
-
     // If we only want to register but not activate the view
     if (!activateView) {
       return true;
@@ -140,8 +152,10 @@ export class ViewManager {
     if (this.cameraControlsRef?.current) {
       this.saveCurrentCameraState();
     }
-    console.log(`[ViewManager] Switching to view "${id}" (animate=${animate}, useDefaults=${useDefaults})`);
-    
+
+    // console.log(
+    //   `[ViewManager] Switching to view "${id}" (animate=${animate}, useDefaults=${useDefaults})`
+    // );
 
     // Check if camera controls are available for activation
     if (!this.cameraControlsRef || !this.cameraControlsRef.current) {
@@ -150,18 +164,18 @@ export class ViewManager {
       );
       return false;
     }
-    
+
     // Ellenőrizzük, hogy van-e már mentett állapot ehhez a nézethez
     const savedState = this.viewCameraStates.get(id);
     const hasState = savedState !== undefined;
-    
+
     // Alkalmazzuk a view-t, de csak akkor állítjuk be az alapértelmezett pozíciókat, ha:
     // - useDefaults = true (explicit reset-et kértünk), VAGY
     // - nincs még mentett állapot (első aktiválás)
     view.apply(
-      this.cameraControlsRef.current, 
-      animate, 
-      customSmoothTime, 
+      this.cameraControlsRef.current,
+      animate,
+      customSmoothTime,
       useDefaults || !hasState
     );
 
@@ -180,20 +194,22 @@ export class ViewManager {
           );
         }
       }, 1);
-      
+
       // Ensure camera up vector is also restored
       const cam = this.cameraControlsRef.current.camera;
       cam.up.set(savedState.up[0], savedState.up[1], savedState.up[2]);
-      if (savedState.zoom !== undefined && cam instanceof THREE.OrthographicCamera) {
+      if (
+        savedState.zoom !== undefined &&
+        cam instanceof THREE.OrthographicCamera
+      ) {
         cam.zoom = savedState.zoom;
         cam.updateProjectionMatrix();
       }
-      
+
       // Force update the controls to ensure settings are applied
       this.cameraControlsRef.current.update(0);
     }
-    
-    
+
     // Update current view
     this.currentViewId = id;
 
@@ -204,10 +220,10 @@ export class ViewManager {
   }
 
   /**
- * Retrieves the saved camera state for a specific view.
- * @param viewId The ID of the view to retrieve the state for.
- * @returns The saved camera state for the specified view, or undefined if the view is not found.
- */
+   * Retrieves the saved camera state for a specific view.
+   * @param viewId The ID of the view to retrieve the state for.
+   * @returns The saved camera state for the specified view, or undefined if the view is not found.
+   */
   public getSavedCameraState(viewId: string) {
     return this.viewCameraStates.get(viewId);
   }
@@ -221,33 +237,7 @@ export class ViewManager {
   }
 
   /**
-   * Get the current view ID
-   * @returns The current view ID
-   */
-  getCurrentViewId(): string {
-    return this.currentViewId;
-  }
 
-  /**
-   * Convenience method for setting top view
-   * @param animate Whether to animate the transition
-   */
-  topView(animate: boolean = false, customSmoothTime?: number): boolean {
-    return this.setView("top", animate, customSmoothTime);
-  }
-
-  /**
-   * Convenience method for setting perspective view
-   * @param animate Whether to animate the transition
-   */
-  perspectiveView(
-    animate: boolean = false,
-    customSmoothTime?: number
-  ): boolean {
-    return this.setView("perspective", animate, customSmoothTime);
-  }
-  
-  /**
    * Reset a view to its default settings
    * @param viewId The view ID to reset
    * @param animate Whether to animate the transition
@@ -261,13 +251,12 @@ export class ViewManager {
    * Reset all views to their default settings
    */
   resetAllViews(): void {
-    // Töröljük az összes mentett állapotot
     this.viewCameraStates.clear();
-    
-    // Ha van aktív nézet, azt azonnal visszaállítjuk
-    const currentViewId = this.getCurrentViewId();
-    if (currentViewId) {
-      this.resetView(currentViewId, false);
+
+
+    const currentView = this.getCurrentView();
+    if (currentView) {
+      this.resetView(currentView?.viewId, false);
     }
   }
 
@@ -280,7 +269,9 @@ export class ViewManager {
    */
   private saveCurrentCameraState() {
     if (!this.cameraControlsRef?.current) {
-      console.warn("[ViewManager] Cannot save camera state: no camera controls reference");
+      console.warn(
+        "[ViewManager] Cannot save camera state: no camera controls reference"
+      );
       return;
     }
     const controls = this.cameraControlsRef.current;
@@ -291,12 +282,15 @@ export class ViewManager {
 
     // Get the current time for debugging purposes
     const timestamp = new Date().toISOString();
-    
+
     // Determine what triggered this save (stack trace would be helpful)
     // const caller = new Error().stack?.split('\n')[2]?.trim() || 'unknown';
-    
-    const zoom = (controls.camera instanceof THREE.OrthographicCamera) ? controls.camera.zoom : undefined;
-    
+
+    const zoom =
+      controls.camera instanceof THREE.OrthographicCamera
+        ? controls.camera.zoom
+        : undefined;
+
     // Create the state object
     const newState = {
       position: [pos.x, pos.y, pos.z],
@@ -305,18 +299,18 @@ export class ViewManager {
       ...(zoom !== undefined ? { zoom } : {}),
       timestamp,
     };
-    
+
     // Get the previous state for comparison
     // const prevState = this.viewCameraStates.get(this.currentViewId);
-    
+
     // Save the new state
     this.viewCameraStates.set(this.currentViewId, newState);
-    
+
     // console.log(`[ViewManager] Saved camera state for view "${this.currentViewId}"`, {
     //   caller,
     //   currentViewId: this.currentViewId,
     //   newState,
-    //   changed: !prevState ? 'initial' : 
+    //   changed: !prevState ? 'initial' :
     //     JSON.stringify(prevState.position) !== JSON.stringify(newState.position) ? true : false
     // });
   }

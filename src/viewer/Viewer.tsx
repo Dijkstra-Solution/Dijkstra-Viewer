@@ -21,6 +21,7 @@ import {
   LineSegmentsGeometry,
 } from "three/examples/jsm/Addons.js";
 import { ViewerFeatures } from "./ViewerFeatures";
+import { useInteractionStore } from "./store/interactionStore";
 
 interface ViewerProps {
   //TODO - expand feature customizability and write docs
@@ -81,6 +82,26 @@ function Viewer({
   }, [on, off, eventHandlers]);
   //#endregion
 
+  //#region Interaction Store
+  const {
+    hoveredGUID,
+    setHoveredGUID,
+    hoveredObjects,
+    setHoveredObjects,
+    hoverIndex,
+    setHoverIndex,
+    hoveredOutlineGeometry,
+    setHoveredOutlineGeometry,
+    selectedGUIDs,
+    setSelectedGUIDs,
+    selectedOutlineGeometry,
+    setSelectedOutlineGeometry,
+    intersectionPoint,
+    setIntersectionPoint,
+    cycleHover,
+  } = useInteractionStore();
+  //#endregion
+
   const createOutlineGeometry = useCallback(
     (guids: Set<string> | string | null) => {
       if (!guids || (guids instanceof Set && guids.size === 0)) return null;
@@ -131,11 +152,10 @@ function Viewer({
   );
 
   //#region Hover
-  const [hoverIndex, setHoverIndex] = useState<number>(0);
-  const [hoveredObjects, setHoveredObjects] = useState<number[]>([]);
-  const [hoveredGUID, setHoveredGUID] = useState<string | null>(null);
-  const [hoveredOutlineGeometry, setHoveredOutlineGeometry] =
-    useState<LineSegmentsGeometry | null>(null);
+  // const [hoveredObjects, setHoveredObjects] = useState<number[]>([]);
+  // const [hoveredGUID, setHoveredGUID] = useState<string | null>(null);
+  // const [hoverIndex, setHoverIndex] = useState<number>(0);
+  // const [hoveredOutlineGeometry, setHoveredOutlineGeometry] = useState<LineSegmentsGeometry | null>(null);
   const hoveredOutlineMaterial = useMemo<LineMaterial>(
     () =>
       new LineMaterial({
@@ -150,20 +170,22 @@ function Viewer({
   //Hovered Outline Geometry
   useEffect(() => {
     const lsGeo = createOutlineGeometry(hoveredGUID);
-    setHoveredOutlineGeometry((old) => {
-      if (old) old.dispose();
-      return lsGeo;
-    });
+    setHoveredOutlineGeometry(lsGeo);
+    // setHoveredOutlineGeometry((old) => {
+    //   if (old) old.dispose();
+    //   return lsGeo;
+    // });
     return () => lsGeo?.dispose();
-  }, [hoveredGUID, createOutlineGeometry]);
+  }, [hoveredGUID, createOutlineGeometry, setHoveredOutlineGeometry]);
 
   //Cycle Hovered Objects    //TODO - bind this to action (ie CycleHover())
   useEffect(() => {
     const handleKeyDown = (event: KeyboardEvent) => {
       if (event.key === "Tab") {
         event.preventDefault();
+        cycleHover();
         const newIndex = (hoverIndex + 1) % (hoveredObjects.length ?? 1);
-        setHoverIndex(newIndex);
+        // setHoverIndex(newIndex);
         const ind = hoveredObjects[newIndex];
         if (ind != undefined && ind != null)
           setHoveredGUID(mergedGeometry?.userData?.faceMap?.[ind]);
@@ -175,16 +197,10 @@ function Viewer({
     return () => {
       document.removeEventListener("keydown", handleKeyDown);
     };
-  }, [hoveredObjects, hoverIndex, mergedGeometry]);
+  }, [hoveredObjects, hoverIndex, mergedGeometry, cycleHover, setHoveredGUID]);
 
   //#endregion
 
-  //#region Seletion
-  const [selectedGUIDs, setSelectedGUIDs] = useState<Set<string>>(
-    new Set<string>()
-  );
-  const [selectedOutlineGeometry, setSelectedOutlineGeometry] =
-    useState<LineSegmentsGeometry | null>(null);
   const selectedOutlineMaterial = useMemo<LineMaterial>(
     () =>
       new LineMaterial({
@@ -199,17 +215,17 @@ function Viewer({
   //Selected Outline Geometry
   useEffect(() => {
     const lsGeo = createOutlineGeometry(selectedGUIDs);
-    setSelectedOutlineGeometry((old) => {
-      if (old) old.dispose();
-      return lsGeo;
-    });
+    setSelectedOutlineGeometry(lsGeo);
+    // setSelectedOutlineGeometry((old) => {
+    //   if (old) old.dispose();
+    //   return lsGeo;
+    // });
     return () => lsGeo?.dispose();
-  }, [selectedGUIDs, createOutlineGeometry]);
+  }, [selectedGUIDs, createOutlineGeometry, setSelectedOutlineGeometry]);
   //#endregion
 
   //#region Sphere on Intersection
-  const [intersectionPoint, setIntersectionPoint] =
-    useState<THREE.Vector3 | null>(null);
+  // const [intersectionPoint, setIntersectionPoint] = useState<THREE.Vector3 | null>(null);
   const intersectionSphereRef = useRef<THREE.Mesh>(null);
   useEffect(() => {
     if (intersectionSphereRef.current) {
@@ -330,6 +346,7 @@ function Viewer({
       hoverIndex,
       hoveredGUID,
       selectedGUIDs,
+      setSelectedGUIDs,
     ]
   );
 
@@ -367,10 +384,12 @@ function Viewer({
         setIntersectionPoint(null);
       }
     },
-    [getMouse, features?.hover?.enabled]
+    [getMouse, features?.hover?.enabled, setHoveredGUID, setHoverIndex,
+      setHoveredObjects, setIntersectionPoint]
   );
   //#endregion
 
+  //#region View Management
   // Handle camera type changes from view settings
   useEffect(() => {
     // Create a custom event handler for the view changed event
@@ -403,16 +422,9 @@ function Viewer({
     const checkInterval = setInterval(() => {
       if (cameraControlRef.current) {
         // Set initial view once camera controls are available
-        if (currentInitialView) {
-          if (typeof currentInitialView === "function") {
-            // Function feature direct call
-            currentInitialView();
-          } else {
-            // String feature with ViewManager
-            actions.SetView(currentInitialView);
-          }
+        if (typeof currentInitialView === "string") {
+          actions.SetView(currentInitialView);
         }
-
         clearInterval(checkInterval);
       }
     }, 100); // Check every 100ms
@@ -435,6 +447,7 @@ function Viewer({
     // Cleanup interval when component unmounts
     return () => clearInterval(checkInterval);
   }, [useOrthographic, views]);
+  //#endregion
 
   // Container stílus a felhasználói stílus és az alapértelmezett értékek kombinálásával
   const containerStyles: React.CSSProperties = {
@@ -448,58 +461,11 @@ function Viewer({
     ...style,
   };
 
-  // Új useEffect a cameraTarget változásához
-  useEffect(() => {
-    if (cameraControlRef.current) {
-      cameraControlRef.current.setTarget(
-        cameraTarget[0],
-        cameraTarget[1],
-        cameraTarget[2],
-        true
-      );
-      console.log(`CameraControls target beállítva: ${cameraTarget}`);
-    }
-  }, [cameraTarget, cameraControlRef]);
-
-  useEffect(() => {
-    if (useOrthographic) {
-      console.log(`Expected cameraPosition: ${cameraPosition}`);
-      console.log(`Expected cameraUp: ${cameraUp}`);
-      console.log(`Expected cameraTarget: ${cameraTarget}`);
-
-      // Give the camera time to actually move to the new position before logging
-      const timeoutId = setTimeout(() => {
-        if (cameraControlRef.current) {
-          console.log(`Camera ID: ${cameraControlRef.current.camera.id}`);
-          console.log(
-            `Actual camera position: ${cameraControlRef.current.camera.position.x},${cameraControlRef.current.camera.position.y},${cameraControlRef.current.camera.position.z}`
-          );
-          console.log(cameraControlRef.current.getTarget(new THREE.Vector3()));
-        }
-      }, 300); // Add a small delay to allow camera movement to complete
-
-      return () => clearTimeout(timeoutId);
-    }
-  }, [useOrthographic, cameraPosition, cameraUp, cameraControlRef]);
-
-  // Új useEffect a cameraTarget változásához
-  useEffect(() => {
-    if (cameraControlRef.current) {
-      cameraControlRef.current.setTarget(
-        cameraTarget[0],
-        cameraTarget[1],
-        cameraTarget[2],
-        true
-      );
-      console.log(`CameraControls target beállítva: ${cameraTarget}`);
-    }
-  }, [cameraTarget, cameraControlRef]);
-
   const angle = (3 * Math.PI) / 4;
   return (
     <div style={containerStyles} ref={containerRef}>
       <Canvas
-        //TODO - initial view setup
+        //TODO - pass active camera to raycaster
         camera={{ position: [0, 0, 5] }}
         onCreated={({ scene, camera, raycaster }) => {
           camera.layers.enableAll();

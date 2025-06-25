@@ -31,7 +31,6 @@ function reducer(state: State, action: GeometryAction): State {
       return { byId: next, rev: rev + 1 };
     }
     case "remove": {
-      console.log(action);
       if (!byId.has(action.guid)) return state;
       const next = new Map(byId);
       next.delete(action.guid);
@@ -228,13 +227,10 @@ export function ViewerProvider({ children }: { children: React.ReactNode }) {
     return merged;
   }, [state.byId]);
 
-  /*########
-  View creation actions
-  #########*/
+  //#region View creation actions
   const deleteView = useCallback(
     (viewId: string) => {
       viewManager.current.unregisterView(viewId);
-      fire(Events.ViewDeleted, { view: viewId });
       fire(Events.ViewDeleted, { view: viewId });
     },
     [viewManager, fire]
@@ -242,9 +238,10 @@ export function ViewerProvider({ children }: { children: React.ReactNode }) {
   const setView = useCallback(
     (viewId: string, animate: boolean = false) => {
       const result = viewManager.current.setView(viewId, animate);
+      fire(Events.ViewChanged, { view: viewId });
       return result;
     },
-    [viewManager]
+    [viewManager, fire]
   );
   const createView = useCallback(
     (viewId: string, displayName?: string, settings?: ViewSettings) => {
@@ -252,7 +249,6 @@ export function ViewerProvider({ children }: { children: React.ReactNode }) {
       if (typeof viewId === "string" && !displayName && !settings) {
         return viewManager.current.setView(viewId);
       }
-
 
       // Handle custom view creation
       if (
@@ -277,7 +273,6 @@ export function ViewerProvider({ children }: { children: React.ReactNode }) {
         if (registered) {
           // Notify about the view creation
           fire(Events.ViewCreated, { view: viewId });
-          fire(Events.ViewCreated, { view: viewId });
         }
 
         return registered;
@@ -290,13 +285,19 @@ export function ViewerProvider({ children }: { children: React.ReactNode }) {
     [viewManager, fire]
   );
 
-  const resetView = useCallback((viewId: string, animate: boolean = false) => {
-    viewManager.current.resetView(viewId, animate);
-  }, [viewManager]);
+  const resetView = useCallback(
+    (viewId: string, animate: boolean = false) => {
+      viewManager.current.resetView(viewId, animate);
+      fire(Events.ViewReset, { view: viewId });
+    },
+    [viewManager, fire]
+  );
 
   const resetAllViews = useCallback(() => {
     viewManager.current.resetAllViews();
-  }, [viewManager]);
+    fire(Events.ViewReset, { view: "all" });
+  }, [viewManager, fire]);
+  //#endregion
 
   const actions = useMemo(
     () => ({
@@ -307,6 +308,7 @@ export function ViewerProvider({ children }: { children: React.ReactNode }) {
       AddEntity: addEntity,
       RemoveEntity: removeEntity,
       ClearEntities: clearEntities,
+
       ResetView: resetView,
       ResetAllViews: resetAllViews,
       SetView: setView,
@@ -317,9 +319,11 @@ export function ViewerProvider({ children }: { children: React.ReactNode }) {
       selectPoints,
       selectEdges,
       selectFaces,
+
       addEntity,
       removeEntity,
       clearEntities,
+
       resetView,
       resetAllViews,
       setView,
@@ -343,7 +347,8 @@ export function ViewerProvider({ children }: { children: React.ReactNode }) {
         getCurrentView: () => viewManager.current.getCurrentView(),
 
         // Internal API
-        setCameraControlsRef: (ref) => viewManager.current.setCameraControlsRef(ref),
+        setCameraControlsRef: (ref) =>
+          viewManager.current.setCameraControlsRef(ref),
         getSavedCameraState: (viewId) => {
           const state = viewManager.current.getSavedCameraState(viewId);
           // Return undefined if no state exists
@@ -353,7 +358,7 @@ export function ViewerProvider({ children }: { children: React.ReactNode }) {
             position: state.position,
             target: state.target,
             up: state.up,
-            zoom: state.zoom ?? 1
+            zoom: state.zoom ?? 1,
           };
         },
       },

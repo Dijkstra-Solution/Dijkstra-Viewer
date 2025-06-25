@@ -8,8 +8,8 @@ export const Events = {
   ViewChanged: "ViewChanged",
   ViewerLoaded: "ViewerLoaded",
   ViewDeleted: "ViewDeleted",
-  ViewResized: "ViewResized",
   ViewCreated: "ViewCreated",
+  ViewReset: "ViewReset",
 } as const;
 
 export type EventType = (typeof Events)[keyof typeof Events];
@@ -26,6 +26,6 @@ export type EventPayloads = {
   [Events.ViewChanged]: { view: string };
   [Events.ViewerLoaded]: { viewer: string };
   [Events.ViewDeleted]: { view: string };
-  [Events.ViewResized]: { view: string };
   [Events.ViewCreated]: { view: string };
+  [Events.ViewReset]: { view: string };
 };
