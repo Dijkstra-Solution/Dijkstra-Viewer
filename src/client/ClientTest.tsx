@@ -38,7 +38,6 @@ function Wrapper() {
       if (key === "Shift") setShiftHeld(true);
       if (key === "Control") setControlHeld(true);
       if (key === "Delete") {
-        console.log(items);
         items.forEach((item) => actions.RemoveEntity(item));
       }
     },
@@ -65,53 +64,44 @@ function Wrapper() {
     });
   }, [actions]);
 
-  useEffect(() => {
-    console.log(items);
-  }, [items]);
-
   const randomHex = () =>
     Math.floor(Math.random() * 0xffffff)
       .toString(16)
       .padEnd(6, "0");
 
   const createBox = (point: { x: number; y: number; z: number }) => {
-    const blc = { x: point.x - 0.5, y: point.y, z: point.z + 0.5 };
-    const brc = { x: point.x + 0.5, y: point.y, z: point.z + 0.5 };
+    const blc = { x: point.x - 0.5, y: point.y - 0.5, z: point.z + 0.5 };
+    const brc = { x: point.x + 0.5, y: point.y - 0.5, z: point.z + 0.5 };
     const tlc = {
       x: point.x - 0.5,
-      y: point.y + 1,
+      y: point.y + 0.5,
       z: point.z + 0.5,
     };
     const trc = {
       x: point.x + 0.5,
-      y: point.y + 1,
+      y: point.y + 0.5,
       z: point.z + 0.5,
     };
 
-    const blf = { x: point.x - 0.5, y: point.y, z: point.z - 0.5 };
-    const brf = { x: point.x + 0.5, y: point.y, z: point.z - 0.5 };
+    const blf = { x: point.x - 0.5, y: point.y - 0.5, z: point.z - 0.5 };
+    const brf = { x: point.x + 0.5, y: point.y - 0.5, z: point.z - 0.5 };
     const tlf = {
       x: point.x - 0.5,
-      y: point.y + 1,
+      y: point.y + 0.5,
       z: point.z - 0.5,
     };
     const trf = {
       x: point.x + 0.5,
-      y: point.y + 1,
+      y: point.y + 0.5,
       z: point.z - 0.5,
     };
 
     const col = randomHex();
     const bottom = new DTOPolygon(generateUUID(), [blc, blf, brf, brc], col);
-
     const top = new DTOPolygon(generateUUID(), [tlc, trc, trf, tlf], col);
-
     const left = new DTOPolygon(generateUUID(), [blc, tlc, tlf, blf], col);
-
     const right = new DTOPolygon(generateUUID(), [brc, brf, trf, trc], col);
-
     const front = new DTOPolygon(generateUUID(), [blc, brc, trc, tlc], col);
-
     const back = new DTOPolygon(generateUUID(), [blf, tlf, trf, brf], col);
 
     const composite = new DTOComposite(generateUUID());
@@ -132,8 +122,17 @@ function Wrapper() {
         <button
           onClick={() => {
             actions.SelectPoints(1, (surfacePoints) => {
-              console.log(surfacePoints);
-              const box = createBox(surfacePoints[0].point);
+              const box = createBox({
+                x: Math.round(
+                  surfacePoints[0].point.x + surfacePoints[0].normal.x / 2
+                ),
+                y: Math.round(
+                  surfacePoints[0].point.y + surfacePoints[0].normal.y / 2
+                ),
+                z: Math.round(
+                  surfacePoints[0].point.z + surfacePoints[0].normal.z / 2
+                ),
+              });
               actions.AddEntity(box);
             });
           }}

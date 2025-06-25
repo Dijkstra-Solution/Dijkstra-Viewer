@@ -152,6 +152,7 @@ export class ViewManager {
     if (this.cameraControlsRef?.current) {
       this.saveCurrentCameraState();
     }
+
     // console.log(
     //   `[ViewManager] Switching to view "${id}" (animate=${animate}, useDefaults=${useDefaults})`
     // );
@@ -223,7 +224,7 @@ export class ViewManager {
    * @param viewId The ID of the view to retrieve the state for.
    * @returns The saved camera state for the specified view, or undefined if the view is not found.
    */
-  getSavedCameraState(viewId: string) {
+  public getSavedCameraState(viewId: string) {
     return this.viewCameraStates.get(viewId);
   }
 
@@ -236,6 +237,7 @@ export class ViewManager {
   }
 
   /**
+
    * Reset a view to its default settings
    * @param viewId The view ID to reset
    * @param animate Whether to animate the transition
@@ -250,6 +252,7 @@ export class ViewManager {
    */
   resetAllViews(): void {
     this.viewCameraStates.clear();
+
 
     const currentView = this.getCurrentView();
     if (currentView) {
