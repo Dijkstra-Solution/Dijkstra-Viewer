@@ -152,9 +152,10 @@ export class ViewManager {
     if (this.cameraControlsRef?.current) {
       this.saveCurrentCameraState();
     }
-    console.log(
-      `[ViewManager] Switching to view "${id}" (animate=${animate}, useDefaults=${useDefaults})`
-    );
+
+    // console.log(
+    //   `[ViewManager] Switching to view "${id}" (animate=${animate}, useDefaults=${useDefaults})`
+    // );
 
     // Check if camera controls are available for activation
     if (!this.cameraControlsRef || !this.cameraControlsRef.current) {
@@ -236,33 +237,7 @@ export class ViewManager {
   }
 
   /**
-   * Get the current view ID
-   * @returns The current view ID
-   */
-  getCurrentViewId(): string {
-    return this.currentViewId;
-  }
 
-  /**
-   * Convenience method for setting top view
-   * @param animate Whether to animate the transition
-   */
-  topView(animate: boolean = false, customSmoothTime?: number): boolean {
-    return this.setView("top", animate, customSmoothTime);
-  }
-
-  /**
-   * Convenience method for setting perspective view
-   * @param animate Whether to animate the transition
-   */
-  perspectiveView(
-    animate: boolean = false,
-    customSmoothTime?: number
-  ): boolean {
-    return this.setView("perspective", animate, customSmoothTime);
-  }
-
-  /**
    * Reset a view to its default settings
    * @param viewId The view ID to reset
    * @param animate Whether to animate the transition
@@ -276,13 +251,12 @@ export class ViewManager {
    * Reset all views to their default settings
    */
   resetAllViews(): void {
-    // Töröljük az összes mentett állapotot
     this.viewCameraStates.clear();
 
-    // Ha van aktív nézet, azt azonnal visszaállítjuk
-    const currentViewId = this.getCurrentViewId();
-    if (currentViewId) {
-      this.resetView(currentViewId, false);
+
+    const currentView = this.getCurrentView();
+    if (currentView) {
+      this.resetView(currentView?.viewId, false);
     }
   }
 

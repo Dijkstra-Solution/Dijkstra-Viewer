@@ -22,18 +22,18 @@ export interface Face {
 }
 
 export type CustomViewSettings = {
-  position: number[],
-  target: number[],
-  up: number[],
-  useOrthographicCamera?: boolean,
+  position: number[];
+  target: number[];
+  up: number[];
+  useOrthographicCamera?: boolean;
   constraints?: {
-    azimuthRotateSpeed?: number,
-    polarRotateSpeed?: number,
-    truckSpeed?: number,
-    dollySpeed?: number,
-    draggingSmoothTime?: number,
-    smoothTime?: number
-  }
+    azimuthRotateSpeed?: number;
+    polarRotateSpeed?: number;
+    truckSpeed?: number;
+    dollySpeed?: number;
+    draggingSmoothTime?: number;
+    smoothTime?: number;
+  };
 };
 
 export const viewerActions = {
@@ -58,7 +58,7 @@ export const viewerActions = {
   RemoveEntity: unbound as (guid: string) => void,
   ClearEntities: unbound as () => void,
 
-  // View management
+  // View Management
   ResetView: unbound as (viewId: string, animate?: boolean) => void,
   ResetAllViews: unbound as () => void,
   SetView: unbound as (viewId: string, animate?: boolean) => void,
