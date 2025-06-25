@@ -1,6 +1,7 @@
 name: NPM Package Release
 
 on:
+  workflow_dispatch:
   push:
     branches:
       - production
