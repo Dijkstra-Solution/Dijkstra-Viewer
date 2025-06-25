@@ -4,6 +4,7 @@ on:
   push:
     branches:
       - production
+      - test-release-workflow
 jobs:
   create-package:
     runs-on: ubuntu-latest
@@ -42,6 +43,5 @@ jobs:
 
       - name: Publish package
         run: npm run release
-        env: 
+        env:
           NODE_AUTH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
-
