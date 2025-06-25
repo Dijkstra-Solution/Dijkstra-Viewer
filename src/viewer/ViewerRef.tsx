@@ -27,6 +27,10 @@ export type ViewerRef = {
     getCurrentView: () => BaseView | undefined;
     // Internal API - not exposed to end users in documentation
     setCameraControlsRef: (ref: RefObject<CameraControls | null>) => void;
-    getSavedCameraState: (viewId: string) => { position: number[]; target: number[]; up: number[]; zoom: number } | undefined;
-  }
+    getSavedCameraState: (
+      viewId: string
+    ) =>
+      | { position: number[]; target: number[]; up: number[]; zoom: number }
+      | undefined;
+  };
 };
