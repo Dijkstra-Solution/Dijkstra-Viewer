@@ -1,3 +1,4 @@
+import { Edge, Face, SurfacePoint } from "@/viewer";
 import { DTOEntity } from "@/viewerapi";
 import { BufferGeometry } from "three";
 import { create } from "zustand";
@@ -24,7 +25,7 @@ type ViewerEventCallback<T extends keyof ViewerEventMap> = (
 
 interface ViewerEventHandler {
   // eslint-disable-next-line @typescript-eslint/no-unsafe-function-type
-  eventListeners: Record<keyof ViewerEventMap, Set<Function>>; //TODO
+  eventListeners: Record<keyof ViewerEventMap, Set<Function>>; //TODO  hide and find safer method
 
   on: <K extends keyof ViewerEventMap>(
     event: K,
@@ -43,7 +44,33 @@ interface ViewerEventHandler {
 }
 
 type ViewerActions = {
+  //TODO - implementation for methods
+  //#region Entity Management
   addEntity: (entity: DTOEntity) => void;
+  removeEntity: (guid: string) => void;
+  clearEntities: () => void;
+  //#endregion
+
+  //#region Selection
+  selectPoints: (
+    count: number,
+    callback: (data: SurfacePoint[]) => void
+  ) => () => void;
+  selectEdges: (count: number, callback: (data: Edge[]) => void) => () => void;
+  selectFaces: (count: number, callback: (data: Face[]) => void) => () => void;
+  //#endregion
+
+  //#region View Management
+  createView: (
+    viewId: string,
+    displayName?: string,
+    settings?: object //TODO
+  ) => boolean;
+  deleteView: (viewId: string) => void;
+  setView: (viewId: string, animate?: boolean) => boolean;
+  resetView: (viewId: string, animate?: boolean) => void;
+  resetAllViews: () => void;
+  //#endregion
 };
 
 type Views = {
@@ -134,8 +161,50 @@ export const useDijkstraViewerStore = create<DijkstraViewerStore>(
 
     //#region Actions
     addEntity(entity) {
-      // your other action logic...
       console.log("added", entity);
+    },
+    removeEntity(guid) {
+      console.log("removed", guid);
+    },
+    clearEntities() {
+      console.log("clearing");
+    },
+
+    selectPoints(count, callback) {
+      return () => {
+        console.log("selected", count, "points");
+        callback([]);
+      };
+    },
+    selectEdges(count, callback) {
+      return () => {
+        console.log("selected", count, "edges");
+        callback([]);
+      };
+    },
+    selectFaces(count, callback) {
+      return () => {
+        console.log("selected", count, "faces");
+        callback([]);
+      };
+    },
+
+    createView(viewId, displayName, settings) {
+      console.log("created view", viewId);
+      return true;
+    },
+    deleteView(viewId) {
+      console.log("deleted view", viewId);
+    },
+    setView(viewId, animate) {
+      console.log("set view", viewId);
+      return true;
+    },
+    resetView(viewId, animate) {
+      console.log("reset view", viewId);
+    },
+    resetAllViews() {
+      console.log("reset all views");
     },
     //#endregion
 

@@ -20,14 +20,12 @@ import {
   LineSegments2,
   LineSegmentsGeometry,
 } from "three/examples/jsm/Addons.js";
-import { ViewerFeatures } from "./ViewerFeatures";
 import { useInteractionStore } from "../store/interactionStore";
 import { useDijkstraViewerStore } from "@/store/dijkstraViewerStore";
 
 interface ViewerProps {
   //TODO - expand feature customizability and write docs
   eventHandlers?: EventHandlerMap;
-  features?: ViewerFeatures;
   initialView?: string | (() => void);
   style?: React.CSSProperties; // Stílusok a container elemhez
   className?: string; // CSS osztály a container elemhez
@@ -35,7 +33,6 @@ interface ViewerProps {
 
 function Viewer({
   eventHandlers,
-  features,
   initialView = "perspective",
   style,
 }: ViewerProps) {
@@ -56,6 +53,7 @@ function Viewer({
   const { on, off, fire, mergedGeometry, views, actions } = useViewer();
 
   const { Attributes } = useDijkstraViewerStore();
+  const { Hover, Selection } = Attributes;
 
   const cameraControlRef = useRef<CameraControls | null>(null);
   const containerRef = useRef<HTMLDivElement>(null);
@@ -162,12 +160,12 @@ function Viewer({
   const hoveredOutlineMaterial = useMemo<LineMaterial>(
     () =>
       new LineMaterial({
-        color: features?.hover?.color ?? 0xffffff,
-        linewidth: features?.hover?.thickness ?? 3,
+        color: Hover.Color,
+        linewidth: Hover.Thickness,
         depthTest: false,
         resolution: new THREE.Vector2(window.innerWidth, window.innerHeight),
       }),
-    [features?.hover?.color, features?.hover?.thickness]
+    [Hover.Color, Hover.Thickness]
   );
 
   //Hovered Outline Geometry
@@ -207,12 +205,12 @@ function Viewer({
   const selectedOutlineMaterial = useMemo<LineMaterial>(
     () =>
       new LineMaterial({
-        color: features?.selection?.color ?? 0xffffff,
-        linewidth: features?.selection?.thickness ?? 3,
+        color: Selection.Color,
+        linewidth: Selection.Thickness,
         depthTest: false,
         resolution: new THREE.Vector2(window.innerWidth, window.innerHeight),
       }),
-    [features?.selection?.color, features?.selection?.thickness]
+    [Selection.Color, Selection.Thickness]
   );
 
   //Selected Outline Geometry
@@ -271,10 +269,10 @@ function Viewer({
         const intersects = raycaster.intersectObjects(scene.children);
         //TODO - clean up nested if spaghetti
         if (intersects.length > 0) {
-          if (features?.selection?.enabled) {
+          if (Selection.Enabled) {
             //TODO - handle hover being disabled
             if (hoveredGUID) {
-              if (features?.selection?.remove) {
+              if (Selection.Remove) {
                 if (selectedGUIDs.has(hoveredGUID)) {
                   const newSelection = new Set(selectedGUIDs);
                   newSelection.delete(hoveredGUID);
@@ -283,7 +281,7 @@ function Viewer({
                     guids: Array.from(newSelection),
                   });
                 }
-              } else if (features?.selection?.multiple) {
+              } else if (Selection.Multiple) {
                 if (!selectedGUIDs.has(hoveredGUID)) {
                   const newSelection = [...selectedGUIDs, hoveredGUID];
                   setSelectedGUIDs(new Set(newSelection));
@@ -314,11 +312,7 @@ function Viewer({
             },
           });
         } else {
-          if (
-            features?.selection?.enabled &&
-            !features?.selection?.remove &&
-            !features?.selection?.multiple
-          ) {
+          if (Selection.Enabled && !Selection.Remove && !Selection.Multiple) {
             setSelectedGUIDs(new Set());
             fire(Events.SelectionChanged, { guids: [] });
           }
@@ -341,9 +335,9 @@ function Viewer({
       }
     },
     [
-      features?.selection?.enabled,
-      features?.selection?.multiple,
-      features?.selection?.remove,
+      Selection.Enabled,
+      Selection.Remove,
+      Selection.Multiple,
       fire,
       getMouse,
       hoverIndex,
@@ -355,7 +349,7 @@ function Viewer({
 
   const handleMouseMove = useCallback(
     (event: React.PointerEvent<HTMLDivElement>) => {
-      if (!Attributes.Hover.Enabled) return;
+      if (!Hover.Enabled) return;
       const ctx = three.current;
       if (!ctx) return;
 
@@ -389,7 +383,7 @@ function Viewer({
     },
     [
       getMouse,
-      Attributes.Hover.Enabled,
+      Hover.Enabled,
       setHoveredGUID,
       setHoverIndex,
       setHoveredObjects,

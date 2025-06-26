@@ -46,6 +46,11 @@ function Wrapper() {
   );
 
   const { Attributes } = useDijkstraViewerStore();
+  
+
+  useEffect(() => {
+    Attributes.Selection.Enabled = true;
+  }, [Attributes.Selection]);
 
   useEffect(() => {
     window.addEventListener("keydown", downHandler);
@@ -66,6 +71,16 @@ function Wrapper() {
       },
     });
   }, [actions]);
+
+  useEffect(() => {
+    Attributes.Selection.Multiple = shiftHeld;
+    console.log("aaaa");
+  }, [shiftHeld, Attributes.Selection]);
+
+  useEffect(() => {
+    Attributes.Selection.Remove = controlHeld;
+    console.log("bbbb");
+  }, [controlHeld, Attributes.Selection]);
 
   const randomHex = () =>
     Math.floor(Math.random() * 0xffffff)
@@ -175,15 +190,6 @@ function Wrapper() {
           },
           [Events.SelectionChanged]: (payload) => {
             setItems(payload.guids);
-          },
-        }}
-        features={{
-          hover: { enabled: hoverOn, color: 0xff6600 },
-          selection: {
-            enabled: true,
-            multiple: shiftHeld,
-            remove: controlHeld,
-            color: 0xffff00,
           },
         }}
       ></Viewer>
