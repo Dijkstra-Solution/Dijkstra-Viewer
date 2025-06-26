@@ -21,7 +21,8 @@ import {
   LineSegmentsGeometry,
 } from "three/examples/jsm/Addons.js";
 import { ViewerFeatures } from "./ViewerFeatures";
-import { useInteractionStore } from "./store/interactionStore";
+import { useInteractionStore } from "../store/interactionStore";
+import { useDijkstraViewerStore } from "@/store/dijkstraViewerStore";
 
 interface ViewerProps {
   //TODO - expand feature customizability and write docs
@@ -53,6 +54,8 @@ function Viewer({
   }>({});
 
   const { on, off, fire, mergedGeometry, views, actions } = useViewer();
+
+  const { Attributes } = useDijkstraViewerStore();
 
   const cameraControlRef = useRef<CameraControls | null>(null);
   const containerRef = useRef<HTMLDivElement>(null);
@@ -352,7 +355,7 @@ function Viewer({
 
   const handleMouseMove = useCallback(
     (event: React.PointerEvent<HTMLDivElement>) => {
-      if (!features?.hover?.enabled) return;
+      if (!Attributes.Hover.Enabled) return;
       const ctx = three.current;
       if (!ctx) return;
 
@@ -384,8 +387,14 @@ function Viewer({
         setIntersectionPoint(null);
       }
     },
-    [getMouse, features?.hover?.enabled, setHoveredGUID, setHoverIndex,
-      setHoveredObjects, setIntersectionPoint]
+    [
+      getMouse,
+      Attributes.Hover.Enabled,
+      setHoveredGUID,
+      setHoverIndex,
+      setHoveredObjects,
+      setIntersectionPoint,
+    ]
   );
   //#endregion
 

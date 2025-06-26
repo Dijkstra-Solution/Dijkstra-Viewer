@@ -9,6 +9,7 @@ import { Events } from "@/viewerapi/Events";
 import { useCallback, useState } from "react";
 import { useEffect } from "react";
 import { useViews } from "@/viewer/hooks/useViews";
+import { useDijkstraViewerStore } from "@/store/dijkstraViewerStore";
 
 export function ClientTest() {
   return (
@@ -43,6 +44,8 @@ function Wrapper() {
     },
     [actions, items]
   );
+
+  const { Attributes } = useDijkstraViewerStore();
 
   useEffect(() => {
     window.addEventListener("keydown", downHandler);
@@ -142,7 +145,11 @@ function Wrapper() {
         <button
           style={{ backgroundColor: hoverOn ? "green" : "red" }}
           onClick={() => {
-            setHoverOn((old) => !old);
+            setHoverOn((old) => {
+              const ret = !old;
+              Attributes.Hover.Enabled = ret;
+              return ret;
+            });
           }}
         >
           Toggle Hover
