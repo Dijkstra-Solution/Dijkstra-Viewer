@@ -1,48 +1,70 @@
-import { useViewer } from "@/viewer/hooks/useViewer";
 import "../App.css";
 import { Viewer } from "@/viewer/Viewer";
-import { ViewerProvider } from "@/viewer/ViewerProvider";
 import { DTOPolygon } from "@/viewerapi/dto/DTOPolygon";
 import { DTOComposite } from "@/viewerapi/dto/DTOComposite";
 import { generateUUID } from "three/src/math/MathUtils.js";
-import { Events } from "@/viewerapi/Events";
 import { useCallback, useState } from "react";
 import { useEffect } from "react";
 import { useViews } from "@/viewer/hooks/useViews";
+import { useDijkstraViewerStore } from "@/store/dijkstraViewerStore";
 
 export function ClientTest() {
-  return (
-    <ViewerProvider>
-      <Wrapper />
-    </ViewerProvider>
-  );
-}
-
-function Wrapper() {
-  const { actions } = useViewer();
+  const { Attributes, SetAttribute, Actions, on } = useDijkstraViewerStore();
   const { viewList, currentViewId } = useViews();
-  const [hoverOn, setHoverOn] = useState(true);
 
   const [shiftHeld, setShiftHeld] = useState(false);
   const [controlHeld, setControlHeld] = useState(false);
 
-  const [items, setItems] = useState<string[]>([]);
+  const [selectedGuids, setSelectedGuids] = useState<string[]>([]);
 
   function upHandler({ key }) {
-    if (key === "Shift") setShiftHeld(false);
-    if (key === "Control") setControlHeld(false);
+    if (key === "Shift") {
+      setShiftHeld(false);
+    }
+    if (key === "Control") {
+      setControlHeld(false);
+    }
   }
 
   const downHandler = useCallback(
     ({ key }) => {
-      if (key === "Shift") setShiftHeld(true);
-      if (key === "Control") setControlHeld(true);
+      if (key === "Shift") {
+        setShiftHeld(true);
+      }
+      if (key === "Control") {
+        setControlHeld(true);
+      }
       if (key === "Delete") {
-        items.forEach((item) => actions.RemoveEntity(item));
+        selectedGuids.forEach((guid) => Actions.RemoveEntity(guid));
       }
     },
-    [actions, items]
+    [Actions, selectedGuids]
   );
+
+  useEffect(() => {
+    Attributes.Hover.Enabled = true;
+    Attributes.Selection.Enabled = true;
+    Attributes.Viewer.BackgroundColor = 0x242424;
+
+    on("StatusMessageChanged", ({ message }) => {
+      console.log(message);
+    });
+
+    on("SelectionChanged", (payload) => {
+      setSelectedGuids(payload.guids);
+    });
+  }, []);
+
+  useEffect(() => {
+    Actions.CreateView("client-view", "Egyedi nézet", {
+      position: [0, 3, 10], // Szemből nézzük
+      target: [0, 0, 0],
+      up: [0, 1, 0],
+      constraints: {
+        smoothTime: 1,
+      },
+    });
+  }, [Actions]);
 
   useEffect(() => {
     window.addEventListener("keydown", downHandler);
@@ -54,15 +76,12 @@ function Wrapper() {
   }, [downHandler]);
 
   useEffect(() => {
-    actions.CreateView("client-view", "Egyedi nézet", {
-      position: [0, 3, 10], // Szemből nézzük
-      target: [0, 0, 0],
-      up: [0, 1, 0],
-      constraints: {
-        smoothTime: 1,
-      },
-    });
-  }, [actions]);
+    Attributes.Selection.Multiple = shiftHeld;
+  }, [shiftHeld, Attributes.Selection]);
+
+  useEffect(() => {
+    Attributes.Selection.Remove = controlHeld;
+  }, [controlHeld, Attributes.Selection]);
 
   const randomHex = () =>
     Math.floor(Math.random() * 0xffffff)
@@ -121,7 +140,8 @@ function Wrapper() {
       <div>
         <button
           onClick={() => {
-            actions.SelectPoints(1, (surfacePoints) => {
+            Actions.SelectPoints(1, (surfacePoints) => {
+              console.log(surfacePoints[0]);
               const box = createBox({
                 x: Math.round(
                   surfacePoints[0].point.x + surfacePoints[0].normal.x / 2
@@ -133,26 +153,28 @@ function Wrapper() {
                   surfacePoints[0].point.z + surfacePoints[0].normal.z / 2
                 ),
               });
-              actions.AddEntity(box);
+              Actions.AddEntity(box);
             });
           }}
         >
           Create Box
         </button>
         <button
-          style={{ backgroundColor: hoverOn ? "green" : "red" }}
+          style={{
+            backgroundColor: Attributes.Hover.Enabled ? "green" : "red",
+          }}
           onClick={() => {
-            setHoverOn((old) => !old);
+            SetAttribute("Hover", { Enabled: !Attributes.Hover.Enabled });
           }}
         >
           Toggle Hover
         </button>
         {viewList.map((view) => (
           <div key={view.viewId}>
-            <button onClick={() => actions.SetView(view.viewId)}>
+            <button onClick={() => Actions.SetView(view.viewId)}>
               {view.displayName}
             </button>
-            <button onClick={() => actions.DeleteView(view.viewId)}>
+            <button onClick={() => Actions.DeleteView(view.viewId)}>
               Delete
             </button>
           </div>
@@ -160,26 +182,7 @@ function Wrapper() {
         <label>{currentViewId}</label>
       </div>
 
-      <Viewer
-        initialView={"perspective"}
-        eventHandlers={{
-          [Events.StatusMessage]: (payload) => {
-            console.log(payload.message);
-          },
-          [Events.SelectionChanged]: (payload) => {
-            setItems(payload.guids);
-          },
-        }}
-        features={{
-          hover: { enabled: hoverOn, color: 0xff6600 },
-          selection: {
-            enabled: true,
-            multiple: shiftHeld,
-            remove: controlHeld,
-            color: 0xffff00,
-          },
-        }}
-      ></Viewer>
+      <Viewer initialView={"perspective"}></Viewer>
     </div>
   );
 }
