@@ -1,6 +1,5 @@
 import "../App.css";
 import { Viewer } from "@/viewer/Viewer";
-import { ViewerProvider } from "@/viewer/ViewerProvider";
 import { DTOPolygon } from "@/viewerapi/dto/DTOPolygon";
 import { DTOComposite } from "@/viewerapi/dto/DTOComposite";
 import { generateUUID } from "three/src/math/MathUtils.js";
@@ -10,17 +9,8 @@ import { useViews } from "@/viewer/hooks/useViews";
 import { useDijkstraViewerStore } from "@/store/dijkstraViewerStore";
 
 export function ClientTest() {
-  return (
-    <ViewerProvider>
-      <Wrapper />
-    </ViewerProvider>
-  );
-}
-
-function Wrapper() {
-  const { Attributes, Actions, on } = useDijkstraViewerStore();
+  const { Attributes, SetAttribute, Actions, on } = useDijkstraViewerStore();
   const { viewList, currentViewId } = useViews();
-  const [hoverOn, setHoverOn] = useState(Attributes.Hover.Enabled);
 
   const [shiftHeld, setShiftHeld] = useState(false);
   const [controlHeld, setControlHeld] = useState(false);
@@ -28,14 +18,22 @@ function Wrapper() {
   const [selectedGuids, setSelectedGuids] = useState<string[]>([]);
 
   function upHandler({ key }) {
-    if (key === "Shift") setShiftHeld(false);
-    if (key === "Control") setControlHeld(false);
+    if (key === "Shift") {
+      setShiftHeld(false);
+    }
+    if (key === "Control") {
+      setControlHeld(false);
+    }
   }
 
   const downHandler = useCallback(
     ({ key }) => {
-      if (key === "Shift") setShiftHeld(true);
-      if (key === "Control") setControlHeld(true);
+      if (key === "Shift") {
+        setShiftHeld(true);
+      }
+      if (key === "Control") {
+        setControlHeld(true);
+      }
       if (key === "Delete") {
         selectedGuids.forEach((guid) => Actions.RemoveEntity(guid));
       }
@@ -44,6 +42,7 @@ function Wrapper() {
   );
 
   useEffect(() => {
+    Attributes.Hover.Enabled = true;
     Attributes.Selection.Enabled = true;
     Attributes.Viewer.BackgroundColor = 0x242424;
 
@@ -54,7 +53,7 @@ function Wrapper() {
     on("SelectionChanged", (payload) => {
       setSelectedGuids(payload.guids);
     });
-  }, [Attributes.Selection, Attributes.Viewer, on]);
+  }, []);
 
   useEffect(() => {
     Actions.CreateView("client-view", "Egyedi nézet", {
@@ -161,13 +160,11 @@ function Wrapper() {
           Create Box
         </button>
         <button
-          style={{ backgroundColor: hoverOn ? "green" : "red" }}
+          style={{
+            backgroundColor: Attributes.Hover.Enabled ? "green" : "red",
+          }}
           onClick={() => {
-            setHoverOn((old) => {
-              const ret = !old;
-              Attributes.Hover.Enabled = ret;
-              return ret;
-            });
+            SetAttribute("Hover", { Enabled: !Attributes.Hover.Enabled });
           }}
         >
           Toggle Hover

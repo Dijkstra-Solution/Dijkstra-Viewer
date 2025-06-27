@@ -1,3 +1,10 @@
+import {
+  BufferGeometryUtils,
+  LineMaterial,
+  LineSegments2,
+  LineSegmentsGeometry,
+} from "three/examples/jsm/Addons.js";
+import * as THREE from "three";
 import { Canvas } from "@react-three/fiber";
 import {
   CameraControls,
@@ -11,30 +18,18 @@ import React, {
   useRef,
   useState,
 } from "react";
-import * as THREE from "three";
-import { useViewer } from "./hooks/useViewer";
-import { EventHandlerMap } from "./EventHandlerMap";
-import {
-  BufferGeometryUtils,
-  LineMaterial,
-  LineSegments2,
-  LineSegmentsGeometry,
-} from "three/examples/jsm/Addons.js";
-import { useInteractionStore } from "../store/interactionStore";
 import { useDijkstraViewerStore } from "@/store/dijkstraViewerStore";
+import { useInteractionStore } from "../store/interactionStore";
+import { useViewer } from "./hooks/useViewer";
 
 interface ViewerProps {
   //TODO - expand feature customizability and write docs
-  eventHandlers?: EventHandlerMap;
   initialView?: string | (() => void);
   style?: React.CSSProperties; // Stílusok a container elemhez
   className?: string; // CSS osztály a container elemhez
 }
 
-function Viewer({
-  initialView = "perspective",
-  style,
-}: ViewerProps) {
+function Viewer({ initialView = "perspective", style }: ViewerProps) {
   const [useOrthographic, setUseOrthographic] = useState(false);
   const [cameraPosition, setCameraPosition] = useState([0, 0, 5]);
   const [cameraUp, setCameraUp] = useState([0, 1, 0]);
@@ -49,20 +44,16 @@ function Viewer({
     smoothTime?: number;
   }>({});
 
-  const { /*on, off, fire, mergedGeometry,*/ views, actions } = useViewer();
+  const { views, actions } = useViewer();
 
   const { Attributes, fire, on, off } = useDijkstraViewerStore();
   const { Hover, Selection } = Attributes;
   const entities = useDijkstraViewerStore((state) => state.entities);
-  // const mergedGeometry = useDijkstraViewerStore(
-  //   (state) => state.mergedGeometry
-  // );
 
   const mergedGeometry = useMemo(() => {
     const dtos = Array.from(entities.values());
-    if (dtos.length === 0) {
-      return new THREE.BufferGeometry();
-    }
+    if (dtos.length === 0) return new THREE.BufferGeometry();
+
     const dtoGeometries = dtos.map((e) => e.geometry());
     const merged =
       BufferGeometryUtils.mergeGeometries(dtoGeometries) ??
@@ -84,34 +75,37 @@ function Viewer({
     return merged;
   }, [entities]);
 
-  // const geom  =useDijkstraViewerStore(state => state.mergedGeometry());
-
   const cameraControlRef = useRef<CameraControls | null>(null);
   const containerRef = useRef<HTMLDivElement>(null);
 
+  //#region Materials
   const mergedGeometryMaterial = useMemo(() => {
     return new THREE.MeshPhongMaterial({
       vertexColors: true,
     });
   }, []);
 
-  //#region Event Handler Registration on Mount
-  // useEffect(() => {
-  //   Object.entries(eventHandlers ?? {}).forEach(([event, handler]) => {
-  //     on(event as EventType, handler);
-  //   });
+  const hoveredOutlineMaterial = useMemo<LineMaterial>(
+    () =>
+      new LineMaterial({
+        color: Hover.Color,
+        linewidth: Hover.Thickness,
+        depthTest: false,
+        resolution: new THREE.Vector2(window.innerWidth, window.innerHeight),
+      }),
+    [Hover.Color, Hover.Thickness]
+  );
 
-  //   //TODO
-  //   // const selectionModeHandler = ({ mode: mode }: { mode: SelectionMode }) => {
-  //   //   setSelectionMode(mode);
-  //   // };
-
-  //   return () => {
-  //     Object.entries(eventHandlers ?? {}).forEach(([event, handler]) => {
-  //       off(event as EventType, handler);
-  //     });
-  //   };
-  // }, [on, off, eventHandlers]);
+  const selectedOutlineMaterial = useMemo<LineMaterial>(
+    () =>
+      new LineMaterial({
+        color: Selection.Color,
+        linewidth: Selection.Thickness,
+        depthTest: false,
+        resolution: new THREE.Vector2(window.innerWidth, window.innerHeight),
+      }),
+    [Selection.Color, Selection.Thickness]
+  );
   //#endregion
 
   //#region Interaction Store
@@ -184,29 +178,10 @@ function Viewer({
   );
 
   //#region Hover
-  // const [hoveredObjects, setHoveredObjects] = useState<number[]>([]);
-  // const [hoveredGUID, setHoveredGUID] = useState<string | null>(null);
-  // const [hoverIndex, setHoverIndex] = useState<number>(0);
-  // const [hoveredOutlineGeometry, setHoveredOutlineGeometry] = useState<LineSegmentsGeometry | null>(null);
-  const hoveredOutlineMaterial = useMemo<LineMaterial>(
-    () =>
-      new LineMaterial({
-        color: Hover.Color,
-        linewidth: Hover.Thickness,
-        depthTest: false,
-        resolution: new THREE.Vector2(window.innerWidth, window.innerHeight),
-      }),
-    [Hover.Color, Hover.Thickness]
-  );
-
-  //Hovered Outline Geometry
+  //Update Hovered Outline Geometry
   useEffect(() => {
     const lsGeo = createOutlineGeometry(hoveredGUID);
     setHoveredOutlineGeometry(lsGeo);
-    // setHoveredOutlineGeometry((old) => {
-    //   if (old) old.dispose();
-    //   return lsGeo;
-    // });
     return () => lsGeo?.dispose();
   }, [hoveredGUID, createOutlineGeometry, setHoveredOutlineGeometry]);
 
@@ -233,36 +208,20 @@ function Viewer({
 
   //#endregion
 
-  const selectedOutlineMaterial = useMemo<LineMaterial>(
-    () =>
-      new LineMaterial({
-        color: Selection.Color,
-        linewidth: Selection.Thickness,
-        depthTest: false,
-        resolution: new THREE.Vector2(window.innerWidth, window.innerHeight),
-      }),
-    [Selection.Color, Selection.Thickness]
-  );
-
-  //Selected Outline Geometry
+  //#region Selection
+  //Update Selected Outline Geometry
   useEffect(() => {
     const lsGeo = createOutlineGeometry(selectedGUIDs);
     setSelectedOutlineGeometry(lsGeo);
-    // setSelectedOutlineGeometry((old) => {
-    //   if (old) old.dispose();
-    //   return lsGeo;
-    // });
     return () => lsGeo?.dispose();
   }, [selectedGUIDs, createOutlineGeometry, setSelectedOutlineGeometry]);
   //#endregion
 
   //#region Sphere on Intersection
-  // const [intersectionPoint, setIntersectionPoint] = useState<THREE.Vector3 | null>(null);
   const intersectionSphereRef = useRef<THREE.Mesh>(null);
   useEffect(() => {
-    if (intersectionSphereRef.current) {
+    if (intersectionSphereRef.current)
       intersectionSphereRef.current.layers.set(1);
-    }
   }, [intersectionPoint]);
   //#endregion
 
@@ -483,8 +442,7 @@ function Viewer({
   }, [useOrthographic, views]);
   //#endregion
 
-  // Container stílus a felhasználói stílus és az alapértelmezett értékek kombinálásával
-
+  //#region Cavnas Style
   const toHexString = (color: number): string => {
     const fallback = "#ffffff";
     if (Number.isNaN(color) || !Number.isFinite(color)) return fallback;
@@ -505,6 +463,8 @@ function Viewer({
   }, [style, Attributes.Viewer.BackgroundColor]);
 
   const angle = (3 * Math.PI) / 4;
+  //#endregion
+
   return (
     <div style={containerStyles} ref={containerRef}>
       <Canvas
