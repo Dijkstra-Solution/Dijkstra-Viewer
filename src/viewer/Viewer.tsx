@@ -12,10 +12,10 @@ import React, {
   useState,
 } from "react";
 import * as THREE from "three";
-import { Events, EventType } from "../viewerapi/Events";
 import { useViewer } from "./hooks/useViewer";
 import { EventHandlerMap } from "./EventHandlerMap";
 import {
+  BufferGeometryUtils,
   LineMaterial,
   LineSegments2,
   LineSegmentsGeometry,
@@ -32,7 +32,6 @@ interface ViewerProps {
 }
 
 function Viewer({
-  eventHandlers,
   initialView = "perspective",
   style,
 }: ViewerProps) {
@@ -50,10 +49,42 @@ function Viewer({
     smoothTime?: number;
   }>({});
 
-  const { on, off, fire, mergedGeometry, views, actions } = useViewer();
+  const { /*on, off, fire, mergedGeometry,*/ views, actions } = useViewer();
 
-  const { Attributes } = useDijkstraViewerStore();
+  const { Attributes, fire, on, off } = useDijkstraViewerStore();
   const { Hover, Selection } = Attributes;
+  const entities = useDijkstraViewerStore((state) => state.entities);
+  // const mergedGeometry = useDijkstraViewerStore(
+  //   (state) => state.mergedGeometry
+  // );
+
+  const mergedGeometry = useMemo(() => {
+    const dtos = Array.from(entities.values());
+    if (dtos.length === 0) {
+      return new THREE.BufferGeometry();
+    }
+    const dtoGeometries = dtos.map((e) => e.geometry());
+    const merged =
+      BufferGeometryUtils.mergeGeometries(dtoGeometries) ??
+      new THREE.BufferGeometry();
+
+    let offset = 0;
+    const faceMap: Record<number, string> = {};
+    for (const dto of dtos) {
+      const dtoGeometry = dto.geometry();
+      const faceCount = dtoGeometry.index
+        ? dtoGeometry.index.count / 3
+        : dtoGeometry.attributes.position.count / 3;
+      for (let i = 0; i < faceCount; i++) {
+        faceMap[offset + i] = dto.guid;
+      }
+      offset += faceCount;
+    }
+    merged.userData.faceMap = faceMap;
+    return merged;
+  }, [entities]);
+
+  // const geom  =useDijkstraViewerStore(state => state.mergedGeometry());
 
   const cameraControlRef = useRef<CameraControls | null>(null);
   const containerRef = useRef<HTMLDivElement>(null);
@@ -65,22 +96,22 @@ function Viewer({
   }, []);
 
   //#region Event Handler Registration on Mount
-  useEffect(() => {
-    Object.entries(eventHandlers ?? {}).forEach(([event, handler]) => {
-      on(event as EventType, handler);
-    });
+  // useEffect(() => {
+  //   Object.entries(eventHandlers ?? {}).forEach(([event, handler]) => {
+  //     on(event as EventType, handler);
+  //   });
 
-    //TODO
-    // const selectionModeHandler = ({ mode: mode }: { mode: SelectionMode }) => {
-    //   setSelectionMode(mode);
-    // };
+  //   //TODO
+  //   // const selectionModeHandler = ({ mode: mode }: { mode: SelectionMode }) => {
+  //   //   setSelectionMode(mode);
+  //   // };
 
-    return () => {
-      Object.entries(eventHandlers ?? {}).forEach(([event, handler]) => {
-        off(event as EventType, handler);
-      });
-    };
-  }, [on, off, eventHandlers]);
+  //   return () => {
+  //     Object.entries(eventHandlers ?? {}).forEach(([event, handler]) => {
+  //       off(event as EventType, handler);
+  //     });
+  //   };
+  // }, [on, off, eventHandlers]);
   //#endregion
 
   //#region Interaction Store
@@ -277,7 +308,7 @@ function Viewer({
                   const newSelection = new Set(selectedGUIDs);
                   newSelection.delete(hoveredGUID);
                   setSelectedGUIDs(newSelection);
-                  fire(Events.SelectionChanged, {
+                  fire("SelectionChanged", {
                     guids: Array.from(newSelection),
                   });
                 }
@@ -285,20 +316,20 @@ function Viewer({
                 if (!selectedGUIDs.has(hoveredGUID)) {
                   const newSelection = [...selectedGUIDs, hoveredGUID];
                   setSelectedGUIDs(new Set(newSelection));
-                  fire(Events.SelectionChanged, {
+                  fire("SelectionChanged", {
                     guids: newSelection,
                   });
                 }
               } else {
                 setSelectedGUIDs(new Set([hoveredGUID]));
-                fire(Events.SelectionChanged, { guids: [hoveredGUID] });
+                fire("SelectionChanged", { guids: [hoveredGUID] });
               }
             } else {
               setSelectedGUIDs(new Set());
-              fire(Events.SelectionChanged, { guids: [] });
+              fire("SelectionChanged", { guids: [] });
             }
           }
-          fire(Events.SceneClicked, {
+          fire("SceneClicked", {
             guid: hoveredGUID ?? undefined,
             point: {
               x: intersects[hoverIndex].point.x,
@@ -314,7 +345,7 @@ function Viewer({
         } else {
           if (Selection.Enabled && !Selection.Remove && !Selection.Multiple) {
             setSelectedGUIDs(new Set());
-            fire(Events.SelectionChanged, { guids: [] });
+            fire("SelectionChanged", { guids: [] });
           }
           const pointOnPlane = raycaster.ray.intersectPlane(
             new THREE.Plane(new THREE.Vector3(0, 1, 0), 0),
@@ -322,7 +353,7 @@ function Viewer({
           );
 
           if (pointOnPlane) {
-            fire(Events.SceneClicked, {
+            fire("SceneClicked", {
               point: {
                 x: pointOnPlane.x,
                 y: pointOnPlane.y,
@@ -453,16 +484,25 @@ function Viewer({
   //#endregion
 
   // Container stílus a felhasználói stílus és az alapértelmezett értékek kombinálásával
-  const containerStyles: React.CSSProperties = {
-    position: "relative",
-    display: "flex",
-    flexDirection: "column",
-    margin: "10px",
-    overflow: "hidden",
 
-    flex: 1,
-    ...style,
+  const toHexString = (color: number): string => {
+    const fallback = "#ffffff";
+    if (Number.isNaN(color) || !Number.isFinite(color)) return fallback;
+    return "#" + color.toString(16);
   };
+
+  const containerStyles: React.CSSProperties = useMemo(() => {
+    return {
+      position: "relative",
+      display: "flex",
+      flexDirection: "column",
+      margin: "10px",
+      overflow: "hidden",
+      flex: 1,
+      backgroundColor: toHexString(Attributes.Viewer.BackgroundColor),
+      ...style,
+    };
+  }, [style, Attributes.Viewer.BackgroundColor]);
 
   const angle = (3 * Math.PI) / 4;
   return (
