@@ -442,7 +442,7 @@ function Viewer({ initialView = "perspective", style }: ViewerProps) {
   }, [useOrthographic, views]);
   //#endregion
 
-  //#region Cavnas Style
+  //#region Canvas Style
   const toHexString = (color: number): string => {
     const fallback = "#ffffff";
     if (Number.isNaN(color) || !Number.isFinite(color)) return fallback;
