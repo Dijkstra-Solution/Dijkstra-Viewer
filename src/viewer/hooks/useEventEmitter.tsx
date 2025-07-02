@@ -1,4 +1,4 @@
-import { EventPayloads, EventType } from "@/viewerapi";
+import { EventPayloads, EventType } from "@/viewerapi/Events";
 import { EventCallback } from "@/viewerapi/EventTypes";
 import { useCallback, useRef } from "react";
 
