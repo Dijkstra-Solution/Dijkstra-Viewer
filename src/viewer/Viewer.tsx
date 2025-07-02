@@ -322,7 +322,6 @@ function Viewer({ style }: ViewerProps) {
 
           if (pointOnPlane) {
             fire("SceneClicked", {
-            fire("SceneClicked", {
               point: {
                 x: pointOnPlane.x,
                 y: pointOnPlane.y,
@@ -419,14 +418,6 @@ function Viewer({ style }: ViewerProps) {
         setIntersectionPoint(null);
       }
     },
-    [
-      getMouse,
-      Hover.Enabled,
-      setHoveredGUID,
-      setHoverIndex,
-      setHoveredObjects,
-      setIntersectionPoint,
-    ]
     [
       getMouse,
       Hover.Enabled,
