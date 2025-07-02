@@ -27,7 +27,7 @@ export class DTOCircle extends DTOEntity {
     this.color = color;
   }
 
-  buildGeometry(): BufferGeometry {
+  protected buildGeometry(): BufferGeometry {
     //TODO . apply LOD here
     const dir = new Vector3(
       this.normal.x,

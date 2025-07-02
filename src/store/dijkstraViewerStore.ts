@@ -1,11 +1,7 @@
 import { DTOEntity } from "@/viewerapi";
 import { BufferGeometry } from "three";
 import { create } from "zustand";
-import { enableMapSet } from "immer";
 import { useViewStore, ViewSettings, ViewStore } from "./viewStore"; // import view store
-
-// Enable Map and Set support for Immer
-enableMapSet();
 
 export interface SurfacePoint {
   guid: string;
@@ -126,6 +122,7 @@ interface Attributes {
   };
   Viewer: {
     BackgroundColor: number;
+    GridHelper: boolean;
   };
 }
 
@@ -362,6 +359,7 @@ export const useDijkstraViewerStore = create<DijkstraViewerStore>(
       },
       Viewer: {
         BackgroundColor: 0xffffff,
+        GridHelper: true,
       },
     },
 

@@ -2,9 +2,10 @@ import { EventPayloads, EventType } from "@/viewerapi/Events";
 import { EventCallback } from "@/viewerapi/EventTypes";
 import { useCallback, useRef } from "react";
 
+//TODO - remove from package
 export function useEventEmitter() {
   // eslint-disable-next-line @typescript-eslint/no-unsafe-function-type
-  const listeners = useRef(new Map<EventType, Set<Function>>()); //TODO - find safer solution
+  const listeners = useRef(new Map<EventType, Set<Function>>());
 
   const on = useCallback(
     <T extends EventType>(
@@ -31,7 +32,7 @@ export function useEventEmitter() {
       listeners.current
         .get(event)
         // eslint-disable-next-line @typescript-eslint/no-explicit-any
-        ?.forEach((callback) => (callback as EventCallback<any>)(payload)); //TODO - find safer solution
+        ?.forEach((callback) => (callback as EventCallback<any>)(payload));
     },
     []
   );
