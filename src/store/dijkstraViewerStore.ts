@@ -1,7 +1,28 @@
-import { Edge, Face, SurfacePoint } from "@/viewer";
 import { DTOEntity } from "@/viewerapi";
 import { BufferGeometry } from "three";
 import { create } from "zustand";
+import { enableMapSet } from "immer";
+import { useViewStore, ViewSettings, ViewStore } from "./viewStore"; // import view store
+
+// Enable Map and Set support for Immer
+enableMapSet();
+
+export interface SurfacePoint {
+  guid: string;
+  point: { x: number; y: number; z: number };
+  normal: { x: number; y: number; z: number };
+}
+export interface Edge {
+  guid: string;
+  start: { x: number; y: number; z: number };
+  end: { x: number; y: number; z: number };
+}
+export interface Face {
+  guid: string;
+  outline: { x: number; y: number; z: number }[];
+  holes: { x: number; y: number; z: number }[][];
+  normal: { x: number; y: number; z: number };
+}
 
 type ViewerEventMap = {
   SelectionChanged: { guids: string[] };
@@ -83,10 +104,10 @@ type ViewerActions = {
 
 type Views = {
   //TODO - viewStore
-  Views: [];
+  Views: ViewStore["views"];
 };
 
-interface AttributeTypes {
+interface Attributes {
   Hover: {
     Enabled: boolean;
     Color: number;
@@ -105,21 +126,17 @@ interface AttributeTypes {
   };
   Viewer: {
     BackgroundColor: number;
-    GridHelper: boolean;
   };
 }
-type Attributes = {
-  Attributes: AttributeTypes;
-  SetAttribute<G extends keyof AttributeTypes>(
-    group: G,
-    path: Partial<AttributeTypes[G]>
-  ): void;
-};
 
 type DijkstraViewerStore = ViewerEventHandler &
   ViewerActions &
-  Views &
-  Attributes & {
+  Views & { Attributes: Attributes } & {
+    SetAttribute<G extends keyof Attributes>(
+      group: G,
+      path: Partial<Attributes[G]>
+    ): void;
+  } & {
     entities: Map<string, DTOEntity>;
   };
 
@@ -128,8 +145,7 @@ export const useDijkstraViewerStore = create<DijkstraViewerStore>(
     entities: new Map<string, DTOEntity>(),
 
     //#region Event Management
-    //TODO - make event sets null by default / iterate over event types
-
+    //TODO - make event sets null by default
     eventListeners: {
       SceneClicked: new Set<
         (payload: ViewerEventMap["SceneClicked"]) => void
@@ -192,14 +208,16 @@ export const useDijkstraViewerStore = create<DijkstraViewerStore>(
         }));
       },
       RemoveEntity(guid) {
+        console.log("removing", guid);
         set((state) => ({
           entities: state.entities.has(guid)
             ? new Map([...state.entities].filter(([g]) => g !== guid))
             : state.entities,
         }));
+        console.log("removed", guid);
       },
       ClearEntities() {
-        set(() => ({ entities: new Map() }));
+        console.log("clearing");
       },
       //#endregion
 
@@ -247,30 +265,84 @@ export const useDijkstraViewerStore = create<DijkstraViewerStore>(
       //#endregion
 
       //#region View Management
-      CreateView(viewId, displayName, settings) {
-        console.log("created view", viewId);
+      CreateView(viewId, displayName: string, settings: ViewSettings) {
+        // Check if the view already exists in this store with the same properties
+        const existingViews = get().Views;
+        // console.log(typeof existingViews);
+        const existingView = existingViews[viewId];
+
+        // Only proceed if the view doesn't exist or has different properties
+        if (
+          !existingView ||
+          existingView.displayName !== displayName ||
+          JSON.stringify(existingView.settings) !== JSON.stringify(settings)
+        ) {
+          useViewStore.getState().registerView({
+            viewId,
+            displayName,
+            settings,
+            defaultSettings: settings,
+          });
+          console.log("created view", viewId);
+          get().fire("ViewCreated", { view: viewId });
+
+          // Update the Views array in this store by adding the new view instead of overwriting
+          set((state) => {
+            const newView = {
+              viewId,
+              displayName,
+              settings,
+              defaultSettings: settings,
+            };
+            // Check if view with this ID already exists
+            // const existingView = state.Views.get(viewId);
+
+            const updatedViews = new Map(state.Views);
+            updatedViews.set(viewId, newView);
+            return { Views: updatedViews };
+          });
+        }
         return true;
       },
       DeleteView(viewId) {
-        console.log("deleted view", viewId);
+        // Prevent deletion of perspective and top view
+        if (viewId === "perspective" || viewId === "top") {
+          console.warn(
+            `Cannot delete the ${viewId} view as it is required by the system.`
+          );
+          return;
+        }
+
+        useViewStore.getState().unregisterView(viewId);
+        get().fire("ViewDeleted", { view: viewId });
+
+        // Update the Views array by filtering out the deleted view
+        set((state) => {
+          const updated = new Map(state.Views);
+          updated.delete(viewId);
+          return { Views: updated };
+        });
+
+        console.log(get().Views);
       },
-      SetView(viewId, animate) {
-        console.log("set view", viewId);
+      SetView(viewId) {
+        useViewStore.getState().setCurrentView(viewId);
+        get().fire("ViewChanged", { view: viewId });
         return true;
       },
       ResetView(viewId, animate) {
+        useViewStore.getState().resetView(viewId, animate);
         console.log("reset view", viewId);
       },
       ResetAllViews() {
+        useViewStore.getState().resetAllViews();
         console.log("reset all views");
       },
       //#endregion
     },
     //#endregion
-
     //TODO - merge with Adrián
-    Views: [],
-
+    Views: useViewStore.getState().views,
     Attributes: {
       Hover: {
         Enabled: false,
@@ -290,7 +362,6 @@ export const useDijkstraViewerStore = create<DijkstraViewerStore>(
       },
       Viewer: {
         BackgroundColor: 0xffffff,
-        GridHelper: true,
       },
     },
 

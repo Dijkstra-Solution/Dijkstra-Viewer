@@ -20,20 +20,19 @@ import React, {
 } from "react";
 import { useDijkstraViewerStore } from "@/store/dijkstraViewerStore";
 import { useInteractionStore } from "../store/interactionStore";
-import { useViewer } from "./hooks/useViewer";
+import { useViewStore } from "../store/viewStore";
 
 interface ViewerProps {
   initialView?: string | (() => void);
   style?: React.CSSProperties; // Styles for the container
   className?: string; // CSS class for the container
 }
-
-function Viewer({ initialView = "perspective", style }: ViewerProps) {
+function Viewer({ style }: ViewerProps) {
   const [useOrthographic, setUseOrthographic] = useState(false);
   const [cameraPosition, setCameraPosition] = useState([0, 0, 5]);
+  const [, setCameraTarget] = useState([0, 0, 0]);
   const [cameraUp, setCameraUp] = useState([0, 1, 0]);
-  const [cameraZoom, setCameraZoom] = useState(12);
-  const [cameraTarget, setCameraTarget] = useState([0, 0, 0]);
+  const [cameraZoom] = useState(12);
   const [cameraConstraints, setCameraConstraints] = useState<{
     azimuthRotateSpeed?: number;
     polarRotateSpeed?: number;
@@ -43,11 +42,16 @@ function Viewer({ initialView = "perspective", style }: ViewerProps) {
     smoothTime?: number;
   }>({});
 
-  const { views, actions } = useViewer();
-
-  const { Attributes, fire, on, off } = useDijkstraViewerStore();
+  const { Attributes, fire } = useDijkstraViewerStore();
   const { Hover, Selection } = Attributes;
   const entities = useDijkstraViewerStore((state) => state.entities);
+
+  const { currentViewId, updateViewPosition, views } = useViewStore();
+
+  // Ref to track if we're currently applying a view change
+  const isApplyingViewChange = useRef(false);
+  // Debounce timer for saving camera state
+  const saveStateTimer = useRef<NodeJS.Timeout | null>(null);
 
   const mergedGeometry = useMemo(() => {
     const dtos = Array.from(entities.values());
@@ -76,6 +80,42 @@ function Viewer({ initialView = "perspective", style }: ViewerProps) {
 
   const cameraControlRef = useRef<CameraControls | null>(null);
   const containerRef = useRef<HTMLDivElement>(null);
+
+  // Debounced function to save camera state
+  const saveCameraState = useCallback(() => {
+    if (saveStateTimer.current) {
+      clearTimeout(saveStateTimer.current);
+    }
+
+    saveStateTimer.current = setTimeout(() => {
+      if (
+        !currentViewId ||
+        !cameraControlRef.current ||
+        isApplyingViewChange.current
+      ) {
+        return;
+      }
+
+      const position = new THREE.Vector3();
+      const target = new THREE.Vector3();
+
+      cameraControlRef.current.getPosition(position);
+      cameraControlRef.current.getTarget(target);
+
+      // Update the view settings with current camera state
+      updateViewPosition(
+        currentViewId,
+        [position.x, position.y, position.z],
+        [target.x, target.y, target.z],
+        cameraUp
+      );
+
+      console.log(`Saved camera state for view: ${currentViewId}`, {
+        position: [position.x, position.y, position.z],
+        target: [target.x, target.y, target.z],
+      });
+    }, 100);
+  }, [currentViewId, updateViewPosition, cameraUp]);
 
   //#region Materials
   const mergedGeometryMaterial = useMemo(() => {
@@ -282,6 +322,7 @@ function Viewer({ initialView = "perspective", style }: ViewerProps) {
 
           if (pointOnPlane) {
             fire("SceneClicked", {
+            fire("SceneClicked", {
               point: {
                 x: pointOnPlane.x,
                 y: pointOnPlane.y,
@@ -346,6 +387,7 @@ function Viewer({ initialView = "perspective", style }: ViewerProps) {
   const handleMouseMove = useCallback(
     (event: React.PointerEvent<HTMLDivElement>) => {
       if (!Hover.Enabled) return;
+      if (!Hover.Enabled) return;
       const ctx = three.current;
       if (!ctx) return;
 
@@ -385,68 +427,128 @@ function Viewer({ initialView = "perspective", style }: ViewerProps) {
       setHoveredObjects,
       setIntersectionPoint,
     ]
+    [
+      getMouse,
+      Hover.Enabled,
+      setHoveredGUID,
+      setHoverIndex,
+      setHoveredObjects,
+      setIntersectionPoint,
+    ]
   );
   //#endregion
 
   //#region View Management
-  // Handle camera type changes from view settings
+
   useEffect(() => {
-    // Create a custom event handler for the view changed event
-    const handleViewChanged = (data: { view: string }) => {
-      const settings = views.getView(data.view)!.getViewSettings();
-      const saved = views.getSavedCameraState(data.view);
+    const viewId = currentViewId;
+    if (!viewId) return;
+
+    console.log("view changed", viewId);
+    const viewData = views.get(viewId);
+    if (viewData && cameraControlRef.current) {
+      const settings = viewData.settings;
+      console.log("Applying view settings:", settings);
+
+      // Set flag to prevent saving during view application
+      isApplyingViewChange.current = true;
+
       setUseOrthographic(!!settings.useOrthographicCamera);
-      setCameraPosition(saved?.position ?? settings.position);
-      setCameraUp(saved?.up ?? settings.up);
-      setCameraZoom(saved?.zoom ?? 12);
-      setCameraConstraints(settings.constraints ?? {});
-      setCameraTarget(saved?.target ?? settings.target);
-    };
 
-    // Register for the ViewChanged event
-    on("ViewChanged", handleViewChanged);
+      if (settings.constraints) {
+        setCameraConstraints(settings.constraints);
+      } else {
+        setCameraConstraints({});
+      }
 
-    return () => {
-      // Cleanup event listener
-      off("ViewChanged", handleViewChanged);
-    };
-  }, [on, off, views, cameraTarget]);
-
-  // Setup camera controls monitoring - only runs once on mount
-  useEffect(() => {
-    // Store the references to avoid closure issues;
-    const currentInitialView = initialView;
-
-    // Try to setup camera controls when available
-    const checkInterval = setInterval(() => {
-      if (cameraControlRef.current) {
-        // Set initial view once camera controls are available
-        if (typeof currentInitialView === "string") {
-          actions.SetView(currentInitialView);
+      // Apply camera position and target
+      // cameraControlRef.current.setLookAt(
+      //   settings.position[0],
+      //   settings.position[1],
+      //   settings.position[2],
+      //   settings.target[0],
+      //   settings.target[1],
+      //   settings.target[2],
+      //   false // No animation for immediate application
+      // );
+      setTimeout(() => {
+        if (cameraControlRef.current && currentViewId === viewId) {
+          cameraControlRef.current.setLookAt(
+            settings.position[0],
+            settings.position[1],
+            settings.position[2],
+            settings.target[0],
+            settings.target[1],
+            settings.target[2],
+            false // No animation for immediate application
+          );
         }
-        clearInterval(checkInterval);
+      }, 1);
+
+      // Apply constraints
+      if (settings.constraints) {
+        if (settings.constraints.azimuthRotateSpeed !== undefined)
+          cameraControlRef.current.azimuthRotateSpeed =
+            settings.constraints.azimuthRotateSpeed;
+        if (settings.constraints.polarRotateSpeed !== undefined)
+          cameraControlRef.current.polarRotateSpeed =
+            settings.constraints.polarRotateSpeed;
+        if (settings.constraints.truckSpeed !== undefined)
+          cameraControlRef.current.truckSpeed = settings.constraints.truckSpeed;
+        if (settings.constraints.dollySpeed !== undefined)
+          cameraControlRef.current.dollySpeed = settings.constraints.dollySpeed;
+        if (settings.constraints.draggingSmoothTime !== undefined)
+          cameraControlRef.current.draggingSmoothTime =
+            settings.constraints.draggingSmoothTime;
+        if (settings.constraints.smoothTime !== undefined)
+          cameraControlRef.current.smoothTime = settings.constraints.smoothTime;
       }
-    }, 100); // Check every 100ms
 
-    // Cleanup interval when component unmounts
-    return () => clearInterval(checkInterval);
-    //eslint-disable-next-line react-hooks/exhaustive-deps
-  }, []);
+      // Update local state to match
+      setCameraPosition(settings.position);
+      setCameraTarget(settings.target);
+      setCameraUp(settings.up);
 
-  useEffect(() => {
-    const checkInterval = setInterval(() => {
-      if (cameraControlRef.current) {
-        // Set camera controls reference to the ViewManager
-        views.setCameraControlsRef(cameraControlRef);
-
-        clearInterval(checkInterval);
-      }
-    }, 100); // Check every 100ms
-
-    // Cleanup interval when component unmounts
-    return () => clearInterval(checkInterval);
-  }, [useOrthographic, views]);
+      // Reset flag after a short delay to allow the camera to settle
+      setTimeout(() => {
+        isApplyingViewChange.current = false;
+      }, 150);
+    }
+  }, [currentViewId, views]);
   //#endregion
+
+  // Camera update handler
+  const handleCameraUpdate = useCallback(() => {
+    if (!cameraControlRef.current || isApplyingViewChange.current) {
+      return;
+    }
+
+    const position = new THREE.Vector3();
+    const target = new THREE.Vector3();
+
+    cameraControlRef.current.getPosition(position);
+    cameraControlRef.current.getTarget(target);
+    // Update local state
+    setCameraPosition([position.x, position.y, position.z]);
+    setCameraTarget([target.x, target.y, target.z]);
+    setCameraUp([
+      cameraControlRef.current.camera.up.x,
+      cameraControlRef.current.camera.up.y,
+      cameraControlRef.current.camera.up.z,
+    ]);
+
+    // Save the camera state (debounced)
+    saveCameraState();
+  }, [saveCameraState]);
+
+  // Cleanup timer on unmount
+  useEffect(() => {
+    return () => {
+      if (saveStateTimer.current) {
+        clearTimeout(saveStateTimer.current);
+      }
+    };
+  }, []);
 
   //#region Canvas Style
   const toHexString = (color: number): string => {
@@ -474,13 +576,12 @@ function Viewer({ initialView = "perspective", style }: ViewerProps) {
   return (
     <div style={containerStyles} ref={containerRef}>
       <Canvas
-        //TODO - pass active camera to raycaster
         camera={{ position: [0, 0, 5] }}
         onCreated={({ scene, camera, raycaster }) => {
           camera.layers.enableAll();
           three.current = {
             scene,
-            camera: camera as THREE.PerspectiveCamera, // Will be replaced
+            camera: camera as THREE.PerspectiveCamera,
             raycaster,
           };
         }}
@@ -532,8 +633,6 @@ function Viewer({ initialView = "perspective", style }: ViewerProps) {
           </mesh>
         )}
 
-        {/*TODO Switch flash */}
-        {/* Conditional camera rendering based on useOrthographic state */}
         <OrthographicCamera
           makeDefault={useOrthographic}
           position={[cameraPosition[0], cameraPosition[1], cameraPosition[2]]}
@@ -582,6 +681,7 @@ function Viewer({ initialView = "perspective", style }: ViewerProps) {
               ? cameraConstraints.smoothTime
               : 0
           }
+          onUpdate={handleCameraUpdate}
         />
         {Attributes.Viewer.GridHelper && (
           <gridHelper
