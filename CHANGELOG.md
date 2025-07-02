@@ -2,6 +2,13 @@
 
 All notable changes to this project will be documented in this file. See [standard-version](https://github.com/conventional-changelog/standard-version) for commit guidelines.
 
+### [0.1.2](https://github.com/Dijkstra-Solution/DijkstraViewer/compare/v0.1.1...v0.1.2) (2025-07-02)
+
+
+### Features
+
+* change view states to zustand store ([#7](https://github.com/Dijkstra-Solution/DijkstraViewer/issues/7)) ([aa84377](https://github.com/Dijkstra-Solution/DijkstraViewer/commit/aa84377dbd81b2b4bcee882ec6310688ea86d203))
+
 ### [0.1.1](https://github.com/Dijkstra-Solution/DijkstraViewer/compare/v1.1.0...v0.1.1) (2025-06-25)
 
 ## [1.1.0](https://github.com/Dijkstra-Solution/DijkstraViewer/compare/v0.0.29...v1.1.0) (2025-06-25)
