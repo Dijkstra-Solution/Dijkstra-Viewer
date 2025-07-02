@@ -1,9 +1,5 @@
 import { DTOEntity } from "./DTOEntity";
-import {
-  BufferAttribute,
-  BufferGeometry,
-  Vector3,
-} from "three";
+import { BufferAttribute, BufferGeometry, Vector3 } from "three";
 import { HexToRGBNormalized } from "@/viewer/utils/colorUtil";
 import { Earcut } from "three/src/extras/Earcut.js";
 
@@ -21,7 +17,7 @@ export class DTOPolygon extends DTOEntity {
     this.color = color;
   }
 
-  buildGeometry(): BufferGeometry {
+  protected buildGeometry(): BufferGeometry {
     //TODO - optimize so it will only get calculated if change has occured
     const v0 = new Vector3(
       this.points[0].x,
@@ -62,7 +58,7 @@ export class DTOPolygon extends DTOEntity {
     geometry.setAttribute("position", new BufferAttribute(posArray, 3));
     geometry.setIndex(indices);
     geometry.computeVertexNormals();
-    
+
     // const shape = new Shape();
     // shape.moveTo(this.points[0].x, this.points[0].y);
     // for (let i = 1; i < this.points.length; i++) {

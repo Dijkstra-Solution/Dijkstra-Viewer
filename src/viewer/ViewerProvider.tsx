@@ -121,8 +121,6 @@ export function ViewerProvider({ children }: { children: React.ReactNode }) {
         message: `Pick ${count == 1 ? "an edge" : count + " edges"}!`,
       });
 
-      // fire(PrivateEvents.SelectionModeChanged, { mode: SelectionMode.EDGE });  //TODO
-
       const edges: Edge[] = [];
       const clickHandler = ({
         guid,

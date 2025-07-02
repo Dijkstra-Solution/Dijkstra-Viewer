@@ -10,7 +10,7 @@ export class DTOComposite extends DTOEntity {
     super(guid);
   }
 
-  buildGeometry(): BufferGeometry {
+  protected buildGeometry(): BufferGeometry {
     return BufferGeometryUtils.mergeGeometries(
       this.children.map((c) => c.geometry())
     );

@@ -86,7 +86,7 @@ type Views = {
   Views: [];
 };
 
-interface Attributes {
+interface AttributeTypes {
   Hover: {
     Enabled: boolean;
     Color: number;
@@ -105,17 +105,21 @@ interface Attributes {
   };
   Viewer: {
     BackgroundColor: number;
+    GridHelper: boolean;
   };
 }
+type Attributes = {
+  Attributes: AttributeTypes;
+  SetAttribute<G extends keyof AttributeTypes>(
+    group: G,
+    path: Partial<AttributeTypes[G]>
+  ): void;
+};
 
 type DijkstraViewerStore = ViewerEventHandler &
   ViewerActions &
-  Views & { Attributes: Attributes } & {
-    SetAttribute<G extends keyof Attributes>(
-      group: G,
-      path: Partial<Attributes[G]>
-    ): void;
-  } & {
+  Views &
+  Attributes & {
     entities: Map<string, DTOEntity>;
   };
 
@@ -124,7 +128,8 @@ export const useDijkstraViewerStore = create<DijkstraViewerStore>(
     entities: new Map<string, DTOEntity>(),
 
     //#region Event Management
-    //TODO - make event sets null by default
+    //TODO - make event sets null by default / iterate over event types
+
     eventListeners: {
       SceneClicked: new Set<
         (payload: ViewerEventMap["SceneClicked"]) => void
@@ -187,16 +192,14 @@ export const useDijkstraViewerStore = create<DijkstraViewerStore>(
         }));
       },
       RemoveEntity(guid) {
-        console.log("removing", guid);
         set((state) => ({
           entities: state.entities.has(guid)
             ? new Map([...state.entities].filter(([g]) => g !== guid))
             : state.entities,
         }));
-        console.log("removed", guid);
       },
       ClearEntities() {
-        console.log("clearing");
+        set(() => ({ entities: new Map() }));
       },
       //#endregion
 
@@ -287,6 +290,7 @@ export const useDijkstraViewerStore = create<DijkstraViewerStore>(
       },
       Viewer: {
         BackgroundColor: 0xffffff,
+        GridHelper: true,
       },
     },
 

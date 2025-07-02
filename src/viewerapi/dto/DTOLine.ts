@@ -23,7 +23,7 @@ export class DTOLine extends DTOEntity {
     this.width = width;
   }
 
-  buildGeometry(): BufferGeometry {
+  protected buildGeometry(): BufferGeometry {
     return new LineGeometry().setFromPoints([
       new Vector3(this.start.x, this.start.y, this.start.z),
       new Vector3(this.end.x, this.end.y, this.end.z),

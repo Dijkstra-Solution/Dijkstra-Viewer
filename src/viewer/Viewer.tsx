@@ -23,10 +23,9 @@ import { useInteractionStore } from "../store/interactionStore";
 import { useViewer } from "./hooks/useViewer";
 
 interface ViewerProps {
-  //TODO - expand feature customizability and write docs
   initialView?: string | (() => void);
-  style?: React.CSSProperties; // Stílusok a container elemhez
-  className?: string; // CSS osztály a container elemhez
+  style?: React.CSSProperties; // Styles for the container
+  className?: string; // CSS class for the container
 }
 
 function Viewer({ initialView = "perspective", style }: ViewerProps) {
@@ -257,37 +256,11 @@ function Viewer({ initialView = "perspective", style }: ViewerProps) {
         raycaster.layers.set(0);
         raycaster.firstHitOnly = false;
         const intersects = raycaster.intersectObjects(scene.children);
+
         //TODO - clean up nested if spaghetti
+
+        //#region SceneClicked
         if (intersects.length > 0) {
-          if (Selection.Enabled) {
-            //TODO - handle hover being disabled
-            if (hoveredGUID) {
-              if (Selection.Remove) {
-                if (selectedGUIDs.has(hoveredGUID)) {
-                  const newSelection = new Set(selectedGUIDs);
-                  newSelection.delete(hoveredGUID);
-                  setSelectedGUIDs(newSelection);
-                  fire("SelectionChanged", {
-                    guids: Array.from(newSelection),
-                  });
-                }
-              } else if (Selection.Multiple) {
-                if (!selectedGUIDs.has(hoveredGUID)) {
-                  const newSelection = [...selectedGUIDs, hoveredGUID];
-                  setSelectedGUIDs(new Set(newSelection));
-                  fire("SelectionChanged", {
-                    guids: newSelection,
-                  });
-                }
-              } else {
-                setSelectedGUIDs(new Set([hoveredGUID]));
-                fire("SelectionChanged", { guids: [hoveredGUID] });
-              }
-            } else {
-              setSelectedGUIDs(new Set());
-              fire("SelectionChanged", { guids: [] });
-            }
-          }
           fire("SceneClicked", {
             guid: hoveredGUID ?? undefined,
             point: {
@@ -302,10 +275,6 @@ function Viewer({ initialView = "perspective", style }: ViewerProps) {
             },
           });
         } else {
-          if (Selection.Enabled && !Selection.Remove && !Selection.Multiple) {
-            setSelectedGUIDs(new Set());
-            fire("SelectionChanged", { guids: [] });
-          }
           const pointOnPlane = raycaster.ray.intersectPlane(
             new THREE.Plane(new THREE.Vector3(0, 1, 0), 0),
             new THREE.Vector3()
@@ -322,6 +291,43 @@ function Viewer({ initialView = "perspective", style }: ViewerProps) {
             });
           }
         }
+        //#endregion
+
+        if (!Selection.Enabled) return;
+
+        if (!hoveredGUID) {
+          if (!Selection.Multiple && !Selection.Remove) {
+            setSelectedGUIDs(new Set());
+            fire("SelectionChanged", { guids: [] });
+          }
+          return;
+        }
+
+        if (Selection.Multiple) {
+          if (!selectedGUIDs.has(hoveredGUID)) {
+            const updated = [...selectedGUIDs, hoveredGUID];
+            setSelectedGUIDs(new Set(updated));
+            fire("SelectionChanged", {
+              guids: updated,
+            });
+          }
+          return;
+        }
+
+        if (Selection.Remove) {
+          if (selectedGUIDs.has(hoveredGUID)) {
+            const updated = new Set(selectedGUIDs);
+            updated.delete(hoveredGUID);
+            setSelectedGUIDs(updated);
+            fire("SelectionChanged", {
+              guids: Array.from(updated),
+            });
+          }
+          return;
+        }
+
+        setSelectedGUIDs(new Set([hoveredGUID]));
+        fire("SelectionChanged", { guids: [hoveredGUID] });
       }
     },
     [
@@ -442,7 +448,7 @@ function Viewer({ initialView = "perspective", style }: ViewerProps) {
   }, [useOrthographic, views]);
   //#endregion
 
-  //#region Cavnas Style
+  //#region Canvas Style
   const toHexString = (color: number): string => {
     const fallback = "#ffffff";
     if (Number.isNaN(color) || !Number.isFinite(color)) return fallback;
@@ -577,7 +583,12 @@ function Viewer({ initialView = "perspective", style }: ViewerProps) {
               : 0
           }
         />
-        <gridHelper args={[20, 20, "#888888", "#444444"]} raycast={() => {}} />
+        {Attributes.Viewer.GridHelper && (
+          <gridHelper
+            args={[20, 20, "#888888", "#444444"]}
+            raycast={() => {}}
+          />
+        )}
       </Canvas>
     </div>
   );
