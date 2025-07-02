@@ -109,11 +109,6 @@ function Viewer({ style }: ViewerProps) {
         [target.x, target.y, target.z],
         cameraUp
       );
-
-      console.log(`Saved camera state for view: ${currentViewId}`, {
-        position: [position.x, position.y, position.z],
-        target: [target.x, target.y, target.z],
-      });
     }, 100);
   }, [currentViewId, updateViewPosition, cameraUp]);
 
@@ -435,11 +430,9 @@ function Viewer({ style }: ViewerProps) {
     const viewId = currentViewId;
     if (!viewId) return;
 
-    console.log("view changed", viewId);
     const viewData = views.get(viewId);
     if (viewData && cameraControlRef.current) {
       const settings = viewData.settings;
-      console.log("Applying view settings:", settings);
 
       // Set flag to prevent saving during view application
       isApplyingViewChange.current = true;
@@ -451,17 +444,6 @@ function Viewer({ style }: ViewerProps) {
       } else {
         setCameraConstraints({});
       }
-
-      // Apply camera position and target
-      // cameraControlRef.current.setLookAt(
-      //   settings.position[0],
-      //   settings.position[1],
-      //   settings.position[2],
-      //   settings.target[0],
-      //   settings.target[1],
-      //   settings.target[2],
-      //   false // No animation for immediate application
-      // );
       setTimeout(() => {
         if (cameraControlRef.current && currentViewId === viewId) {
           cameraControlRef.current.setLookAt(
@@ -471,7 +453,7 @@ function Viewer({ style }: ViewerProps) {
             settings.target[0],
             settings.target[1],
             settings.target[2],
-            false // No animation for immediate application
+            false
           );
         }
       }, 1);
