@@ -5,12 +5,14 @@ import { DTOComposite } from "@/viewerapi/dto/DTOComposite";
 import { generateUUID } from "three/src/math/MathUtils.js";
 import { useCallback, useState } from "react";
 import { useEffect } from "react";
-import { useViews } from "@/viewer/hooks/useViews";
+// import { useViews } from "@/viewer/hooks/useViews";
 import { useDijkstraViewerStore } from "@/store/dijkstraViewerStore";
+import { useViewStore } from "@/store/viewStore";
 
 export function ClientTest() {
-  const { Attributes, SetAttribute, Actions, on } = useDijkstraViewerStore();
-  const { viewList, currentViewId } = useViews();
+  const { Attributes, SetAttribute, Actions, on, Views } =
+    useDijkstraViewerStore();
+  const { currentViewId } = useViewStore();
 
   const [shiftHeld, setShiftHeld] = useState(false);
   const [controlHeld, setControlHeld] = useState(false);
@@ -53,18 +55,8 @@ export function ClientTest() {
     on("SelectionChanged", (payload) => {
       setSelectedGuids(payload.guids);
     });
+    //eslint-disable-next-line
   }, []);
-
-  useEffect(() => {
-    Actions.CreateView("client-view", "Egyedi nézet", {
-      position: [0, 3, 10], // Szemből nézzük
-      target: [0, 0, 0],
-      up: [0, 1, 0],
-      constraints: {
-        smoothTime: 1,
-      },
-    });
-  }, [Actions]);
 
   useEffect(() => {
     window.addEventListener("keydown", downHandler);
@@ -74,6 +66,14 @@ export function ClientTest() {
       window.removeEventListener("keyup", upHandler);
     };
   }, [downHandler]);
+
+  useEffect(() => {
+    Actions.CreateView("client-view", "Egyedi nézet", {
+      position: [0, 3, 10],
+      target: [0, 0, 0],
+      up: [0, 1, 0],
+    });
+  }, [Actions]);
 
   useEffect(() => {
     Attributes.Selection.Multiple = shiftHeld;
@@ -125,8 +125,13 @@ export function ClientTest() {
 
     const composite = new DTOComposite(generateUUID());
     composite.children.push(bottom, top, left, right, front, back);
+    console.log(Views);
     return composite;
   };
+
+  useEffect(() => {
+    console.log(Views);
+  }, []);
 
   return (
     <div
@@ -165,11 +170,12 @@ export function ClientTest() {
           }}
           onClick={() => {
             SetAttribute("Hover", { Enabled: !Attributes.Hover.Enabled });
+            console.log(Views);
           }}
         >
           Toggle Hover
         </button>
-        {viewList.map((view) => (
+        {Array.from(Views.values()).map((view) => (
           <div key={view.viewId}>
             <button onClick={() => Actions.SetView(view.viewId)}>
               {view.displayName}
