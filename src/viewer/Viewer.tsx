@@ -23,11 +23,12 @@ import { useInteractionStore } from "../store/interactionStore";
 import { useViewStore } from "../store/viewStore";
 
 interface ViewerProps {
-  initialView?: string | (() => void);
+  activeView: string;
   style?: React.CSSProperties; // Styles for the container
   className?: string; // CSS class for the container
 }
-function Viewer({ style }: ViewerProps) {
+
+function Viewer({ style, activeView }: ViewerProps) {
   const [useOrthographic, setUseOrthographic] = useState(false);
   const [cameraPosition, setCameraPosition] = useState([0, 0, 5]);
   const [, setCameraTarget] = useState([0, 0, 0]);
@@ -46,7 +47,12 @@ function Viewer({ style }: ViewerProps) {
   const { Hover, Selection } = Attributes;
   const entities = useDijkstraViewerStore((state) => state.entities);
 
-  const { currentViewId, updateViewPosition, views } = useViewStore();
+  const {
+    updateViewPosition,
+    views,
+    currentViewId: globalView,
+  } = useViewStore();
+  const activeViewId = activeView ?? globalView;
 
   // Ref to track if we're currently applying a view change
   const isApplyingViewChange = useRef(false);
@@ -89,7 +95,7 @@ function Viewer({ style }: ViewerProps) {
 
     saveStateTimer.current = setTimeout(() => {
       if (
-        !currentViewId ||
+        !activeViewId ||
         !cameraControlRef.current ||
         isApplyingViewChange.current
       ) {
@@ -104,13 +110,13 @@ function Viewer({ style }: ViewerProps) {
 
       // Update the view settings with current camera state
       updateViewPosition(
-        currentViewId,
+        activeViewId,
         [position.x, position.y, position.z],
         [target.x, target.y, target.z],
         cameraUp
       );
     }, 100);
-  }, [currentViewId, updateViewPosition, cameraUp]);
+  }, [activeViewId, updateViewPosition, cameraUp]);
 
   //#region Materials
   const mergedGeometryMaterial = useMemo(() => {

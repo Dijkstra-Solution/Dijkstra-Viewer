@@ -10,9 +10,8 @@ import { useDijkstraViewerStore } from "@/store/dijkstraViewerStore";
 import { useViewStore } from "@/store/viewStore";
 
 export function ClientTest() {
-  const { Attributes, SetAttribute, Actions, on, Views } =
-    useDijkstraViewerStore();
-  const { currentViewId } = useViewStore();
+  const [view1, setView1] = useState("perspective");
+  const [view2, setView2] = useState("top");
 
   const [shiftHeld, setShiftHeld] = useState(false);
   const [controlHeld, setControlHeld] = useState(false);
@@ -175,20 +174,34 @@ export function ClientTest() {
         >
           Toggle Hover
         </button>
-        {Array.from(Views.values()).map((view) => (
-          <div key={view.viewId}>
-            <button onClick={() => Actions.SetView(view.viewId)}>
-              {view.displayName}
+        <div style={{ display: "flex", gap: 12 }}>
+          <div>
+            <h4>Viewer 1 nézete:{view1}</h4>
+            {Array.from(Views.values()).map((v) => (
+              <button key={v.viewId} onClick={() => setView1(v.viewId)}>
+                {v.displayName}
             </button>
-            <button onClick={() => Actions.DeleteView(view.viewId)}>
-              Delete
-            </button>
+            ))}
           </div>
-        ))}
-        <label>{currentViewId}</label>
+          <div>
+            <h4>Viewer 2 nézete:{view2}</h4>
+            {Array.from(Views.values()).map((v) => (
+              <button key={v.viewId} onClick={() => setView2(v.viewId)}>
+                {v.displayName}
+            </button>
+            ))}
+          </div>
+        </div>
       </div>
 
-      <Viewer initialView={"perspective"}></Viewer>
+      <Viewer
+        activeView={view1}
+        style={{ border: "1px solid white" }}
+      />
+      <Viewer
+        activeView={view2}
+        style={{ border: "1px solid white" }}
+      />
     </div>
   );
 }
