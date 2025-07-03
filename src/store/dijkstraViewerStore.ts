@@ -126,7 +126,7 @@ interface Attributes {
   };
 }
 
-type DijkstraViewerStore = ViewerEventHandler &
+export type DijkstraViewerStore = ViewerEventHandler &
   ViewerActions &
   Views & { Attributes: Attributes } & {
     SetAttribute<G extends keyof Attributes>(
@@ -137,8 +137,8 @@ type DijkstraViewerStore = ViewerEventHandler &
     entities: Map<string, DTOEntity>;
   };
 
-export const useDijkstraViewerStore = create<DijkstraViewerStore>(
-  (set, get) => ({
+export const createDijkstraViewerStore = () =>
+  create<DijkstraViewerStore>((set, get) => ({
     entities: new Map<string, DTOEntity>(),
 
     //#region Event Management
@@ -368,5 +368,4 @@ export const useDijkstraViewerStore = create<DijkstraViewerStore>(
           },
         },
       })),
-  })
-);
+  }));
