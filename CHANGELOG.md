@@ -2,6 +2,19 @@
 
 All notable changes to this project will be documented in this file. See [standard-version](https://github.com/conventional-changelog/standard-version) for commit guidelines.
 
+### [0.1.4](https://github.com/Dijkstra-Solution/DijkstraViewer/compare/v0.1.3...v0.1.4) (2025-07-03)
+
+
+### Features
+
+* instance management for viewerstore ([#11](https://github.com/Dijkstra-Solution/DijkstraViewer/issues/11)) ([219b862](https://github.com/Dijkstra-Solution/DijkstraViewer/commit/219b8629547f95eed4db7153015c15efba16eaff))
+* move active view from viewstore to viewer props ([#10](https://github.com/Dijkstra-Solution/DijkstraViewer/issues/10)) ([093d83b](https://github.com/Dijkstra-Solution/DijkstraViewer/commit/093d83b3bd46a98007e07c22ff10e9f37d9fb867))
+
+
+### Bug Fixes
+
+* post-merge fix ([cd5e282](https://github.com/Dijkstra-Solution/DijkstraViewer/commit/cd5e282ebc9e35c37513ed6440145db2e6942e9a))
+
 ### [0.1.3](https://github.com/Dijkstra-Solution/DijkstraViewer/compare/v0.1.2...v0.1.3) (2025-07-03)
 
 
