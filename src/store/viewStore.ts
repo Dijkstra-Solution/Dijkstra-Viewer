@@ -1,5 +1,4 @@
 import { create } from "zustand";
-import { CameraControls } from "@react-three/drei";
 
 /**
  * Camera mode types
@@ -22,22 +21,6 @@ export interface ViewSettings {
     draggingSmoothTime?: number;
     smoothTime?: number;
   };
-}
-
-/**
- * Base abstract view interface for the store
- */
-export interface IBaseView {
-  viewId: string;
-  displayName: string;
-  getViewSettings(): ViewSettings;
-  applyConstraints(controls: CameraControls): void;
-  apply(
-    controls: CameraControls,
-    animate?: boolean,
-    customSmoothTime?: number,
-    useDefaults?: boolean
-  ): void;
 }
 
 /**
@@ -71,8 +54,8 @@ export type ViewStore = {
   getCurrentView: () => ViewData | undefined;
 
   // Actions - View Settings
-  updateViewSettings: (viewId: string, settings: Partial<ViewSettings>) => void;
   setOrthographicCamera: (viewId: string, useOrthographic: boolean) => void;
+  updateViewSettings: (viewId: string, settings: Partial<ViewSettings>) => void;
   updateViewPosition: (
     viewId: string,
     position: number[],
@@ -83,131 +66,7 @@ export type ViewStore = {
     viewId: string,
     constraints: Partial<ViewSettings["constraints"]>
   ) => void;
-
-  // Camera Controls Interaction
-  applyToCamera: (
-    controls: CameraControls,
-    viewId?: string,
-    animate?: boolean,
-    customSmoothTime?: number,
-    useDefaults?: boolean
-  ) => void;
 };
-
-/**
- * Implementation of BaseView's apply method as a utility function
- */
-function applyViewToCamera(
-  settings: ViewSettings,
-  controls: CameraControls,
-  animate: boolean = false,
-  customSmoothTime?: number,
-  useDefaults: boolean = true
-): void {
-  // Define symbol for camera mode storage
-  const modeSymbol = Symbol.for("preferredCameraMode");
-
-  // Get the current and new camera mode
-  const controlsWithSymbol = controls as unknown as Record<symbol, unknown>;
-  const currentMode = controlsWithSymbol[modeSymbol] as string | undefined;
-  const newMode = settings.useOrthographicCamera
-    ? "orthographic"
-    : "perspective";
-
-  // Check if we're changing camera types
-  const isChangingCameraType =
-    settings.useOrthographicCamera !== undefined &&
-    currentMode !== undefined &&
-    currentMode !== newMode;
-
-  // Force animation off when switching camera types as this causes issues
-  let shouldAnimate = animate;
-  if (isChangingCameraType) {
-    // console.log('Camera type change detected, disabling animation');
-    shouldAnimate = false;
-  }
-
-  // Only set position and target if useDefaults is true
-  if (useDefaults) {
-    if (shouldAnimate) {
-      // For animation, set the smooth time - custom value takes precedence
-      if (customSmoothTime !== undefined) {
-        // Use the custom smooth time provided in the method call
-        controls.smoothTime = customSmoothTime;
-      } else if (settings.constraints?.smoothTime !== undefined) {
-        // Otherwise use smooth time from constraints if available
-        controls.smoothTime = settings.constraints.smoothTime;
-      }
-
-      // Then do the animated camera movement
-      controls.setLookAt(
-        settings.position[0],
-        settings.position[1],
-        settings.position[2],
-        settings.target[0],
-        settings.target[1],
-        settings.target[2],
-        true
-      );
-    } else {
-      // When not animating, move instantly
-      controls.setLookAt(
-        settings.position[0],
-        settings.position[1],
-        settings.position[2],
-        settings.target[0],
-        settings.target[1],
-        settings.target[2],
-        false
-      );
-    }
-  }
-
-  // The camera type (orthographic or perspective) is handled at the Viewer level
-  // through the ViewChanged event. No custom events needed here.
-  if (settings.useOrthographicCamera !== undefined) {
-    // Store camera mode as a property on controls for debugging/reference
-    // Using a Symbol to avoid name collisions
-    Object.defineProperty(controls, modeSymbol, {
-      value: newMode,
-      enumerable: false,
-      configurable: true,
-    });
-  }
-
-  // Always apply constraints
-  applyConstraintsToCamera(settings, controls);
-}
-
-/**
- * Implementation of BaseView's applyConstraints method as a utility function
- */
-function applyConstraintsToCamera(
-  settings: ViewSettings,
-  controls: CameraControls
-): void {
-  // Apply default constraints (these match drei CameraControls defaults)
-  controls.azimuthRotateSpeed = 1.0;
-  controls.polarRotateSpeed = 1.0;
-  controls.truckSpeed = 1.0;
-  controls.dollySpeed = 1.0;
-  controls.draggingSmoothTime = 0;
-  controls.smoothTime = 0;
-
-  // Then apply view-specific constraint settings if provided
-  if (settings.constraints) {
-    const c = settings.constraints;
-    if (c.azimuthRotateSpeed !== undefined)
-      controls.azimuthRotateSpeed = c.azimuthRotateSpeed;
-    if (c.polarRotateSpeed !== undefined)
-      controls.polarRotateSpeed = c.polarRotateSpeed;
-    if (c.truckSpeed !== undefined) controls.truckSpeed = c.truckSpeed;
-    if (c.dollySpeed !== undefined) controls.dollySpeed = c.dollySpeed;
-    if (c.draggingSmoothTime !== undefined)
-      controls.draggingSmoothTime = c.draggingSmoothTime;
-    if (c.smoothTime !== undefined) controls.smoothTime = c.smoothTime;
-  }
-}
 
 /**
  * Create the ViewStore with Zustand
@@ -221,12 +80,12 @@ export const useViewStore = create<ViewStore>((set, get) => ({
         viewId: "perspective",
         displayName: "Perspective",
         settings: {
-          position: [0, 0, 5],
+          position: [5, 5, 5],
           target: [0, 0, 0],
           up: [0, 1, 0],
         },
         defaultSettings: {
-          position: [0, 0, 5],
+          position: [5, 5, 5],
           target: [0, 0, 0],
           up: [0, 1, 0],
         },
@@ -281,8 +140,6 @@ export const useViewStore = create<ViewStore>((set, get) => ({
     set((state) => ({
       ...state,
       views: new Map(state.views).set(view.viewId, view),
-      currentViewId:
-        state.currentViewId === null ? view.viewId : state.currentViewId,
     }));
   },
 
@@ -481,29 +338,5 @@ export const useViewStore = create<ViewStore>((set, get) => ({
         views: newViews,
       };
     });
-  },
-
-  // Camera Controls Interaction
-  applyToCamera: (
-    controls,
-    viewId,
-    animate = false,
-    customSmoothTime,
-    useDefaults = true
-  ) => {
-    const state = get();
-    const targetViewId = viewId || state.currentViewId;
-    if (!targetViewId) return;
-
-    const view = state.views.get(targetViewId);
-    if (!view) return;
-
-    applyViewToCamera(
-      view.settings,
-      controls,
-      animate,
-      customSmoothTime,
-      useDefaults
-    );
   },
 }));

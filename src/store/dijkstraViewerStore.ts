@@ -280,7 +280,6 @@ export const useDijkstraViewerStore = create<DijkstraViewerStore>(
             settings,
             defaultSettings: settings,
           });
-          console.log("created view", viewId);
           get().fire("ViewCreated", { view: viewId });
 
           // Update the Views array in this store by adding the new view instead of overwriting
@@ -319,8 +318,6 @@ export const useDijkstraViewerStore = create<DijkstraViewerStore>(
           updated.delete(viewId);
           return { Views: updated };
         });
-
-        console.log(get().Views);
       },
       SetView(viewId) {
         useViewStore.getState().setCurrentView(viewId);
@@ -329,11 +326,9 @@ export const useDijkstraViewerStore = create<DijkstraViewerStore>(
       },
       ResetView(viewId, animate) {
         useViewStore.getState().resetView(viewId, animate);
-        console.log("reset view", viewId);
       },
       ResetAllViews() {
         useViewStore.getState().resetAllViews();
-        console.log("reset all views");
       },
       //#endregion
     },
