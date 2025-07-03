@@ -18,17 +18,17 @@ import React, {
   useRef,
   useState,
 } from "react";
-import { useDijkstraViewerStore } from "@/store/dijkstraViewerStore";
 import { useInteractionStore } from "../store/interactionStore";
 import { useViewStore } from "../store/viewStore";
-
+import type { UseBoundStore, StoreApi } from "zustand";
+import type { DijkstraViewerStore } from "@/store/dijkstraViewerStore";
 interface ViewerProps {
   activeView: string;
+  store: UseBoundStore<StoreApi<DijkstraViewerStore>>;
   style?: React.CSSProperties; // Styles for the container
   className?: string; // CSS class for the container
 }
-
-function Viewer({ style, activeView }: ViewerProps) {
+function Viewer({ style, store, activeView}: ViewerProps) {
   const [useOrthographic, setUseOrthographic] = useState(false);
   const [cameraPosition, setCameraPosition] = useState([0, 0, 5]);
   const [, setCameraTarget] = useState([0, 0, 0]);
@@ -43,9 +43,9 @@ function Viewer({ style, activeView }: ViewerProps) {
     smoothTime?: number;
   }>({});
 
-  const { Attributes, fire } = useDijkstraViewerStore();
+  const { Attributes, fire } = store((state) => state);
   const { Hover, Selection } = Attributes;
-  const entities = useDijkstraViewerStore((state) => state.entities);
+  const entities = store((state) => state.entities);
 
   const {
     updateViewPosition,
@@ -433,10 +433,9 @@ function Viewer({ style, activeView }: ViewerProps) {
   //#region View Management
 
   useEffect(() => {
-    const viewId = currentViewId;
-    if (!viewId) return;
+    if (!currentViewId) return;
 
-    const viewData = views.get(viewId);
+    const viewData = views.get(activeView);
     if (viewData && cameraControlRef.current) {
       const settings = viewData.settings;
 
@@ -451,7 +450,7 @@ function Viewer({ style, activeView }: ViewerProps) {
         setCameraConstraints({});
       }
       setTimeout(() => {
-        if (cameraControlRef.current && currentViewId === viewId) {
+        if (cameraControlRef.current && activeView === activeView) {
           cameraControlRef.current.setLookAt(
             settings.position[0],
             settings.position[1],
@@ -493,7 +492,7 @@ function Viewer({ style, activeView }: ViewerProps) {
         isApplyingViewChange.current = false;
       }, 150);
     }
-  }, [currentViewId, views]);
+  }, [activeView, views]);
   //#endregion
 
   // Camera update handler

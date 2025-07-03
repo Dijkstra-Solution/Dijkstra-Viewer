@@ -3,15 +3,18 @@ import { Viewer } from "@/viewer/Viewer";
 import { DTOPolygon } from "@/viewerapi/dto/DTOPolygon";
 import { DTOComposite } from "@/viewerapi/dto/DTOComposite";
 import { generateUUID } from "three/src/math/MathUtils.js";
-import { useCallback, useState } from "react";
+import { useCallback, useMemo, useState } from "react";
 import { useEffect } from "react";
 // import { useViews } from "@/viewer/hooks/useViews";
-import { useDijkstraViewerStore } from "@/store/dijkstraViewerStore";
-import { useViewStore } from "@/store/viewStore";
+import { createDijkstraViewerStore } from "@/store/dijkstraViewerStore";
 
 export function ClientTest() {
   const [view1, setView1] = useState("perspective");
   const [view2, setView2] = useState("top");
+
+  const viewerStore1 = useMemo(() => createDijkstraViewerStore(), []);
+  const viewerStore2 = useMemo(() => createDijkstraViewerStore(), []);
+
 
   const [shiftHeld, setShiftHeld] = useState(false);
   const [controlHeld, setControlHeld] = useState(false);
@@ -174,6 +177,7 @@ export function ClientTest() {
         >
           Toggle Hover
         </button>
+
         <div style={{ display: "flex", gap: 12 }}>
           <div>
             <h4>Viewer 1 nézete:{view1}</h4>
@@ -190,16 +194,19 @@ export function ClientTest() {
                 {v.displayName}
             </button>
             ))}
+
           </div>
         </div>
       </div>
 
       <Viewer
         activeView={view1}
+        store={viewerStore1}
         style={{ border: "1px solid white" }}
       />
       <Viewer
         activeView={view2}
+        store={viewerStore1}
         style={{ border: "1px solid white" }}
       />
     </div>
