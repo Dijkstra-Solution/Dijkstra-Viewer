@@ -9,12 +9,12 @@ import { useEffect } from "react";
 import { createDijkstraViewerStore } from "@/store/dijkstraViewerStore";
 
 export function ClientTest() {
+  const viewerStore1 = useMemo(() => createDijkstraViewerStore(), []);
+  const { Actions, Views, Attributes, SetAttribute, on } =
+    viewerStore1.getState();
+
   const [view1, setView1] = useState("perspective");
   const [view2, setView2] = useState("top");
-
-  const viewerStore1 = useMemo(() => createDijkstraViewerStore(), []);
-  const viewerStore2 = useMemo(() => createDijkstraViewerStore(), []);
-
 
   const [shiftHeld, setShiftHeld] = useState(false);
   const [controlHeld, setControlHeld] = useState(false);
@@ -184,7 +184,7 @@ export function ClientTest() {
             {Array.from(Views.values()).map((v) => (
               <button key={v.viewId} onClick={() => setView1(v.viewId)}>
                 {v.displayName}
-            </button>
+              </button>
             ))}
           </div>
           <div>
@@ -192,9 +192,8 @@ export function ClientTest() {
             {Array.from(Views.values()).map((v) => (
               <button key={v.viewId} onClick={() => setView2(v.viewId)}>
                 {v.displayName}
-            </button>
+              </button>
             ))}
-
           </div>
         </div>
       </div>

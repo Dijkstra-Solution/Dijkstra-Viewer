@@ -28,7 +28,7 @@ interface ViewerProps {
   style?: React.CSSProperties; // Styles for the container
   className?: string; // CSS class for the container
 }
-function Viewer({ style, store, activeView}: ViewerProps) {
+function Viewer({ style, store, activeView }: ViewerProps) {
   const [useOrthographic, setUseOrthographic] = useState(false);
   const [cameraPosition, setCameraPosition] = useState([0, 0, 5]);
   const [, setCameraTarget] = useState([0, 0, 0]);
@@ -433,7 +433,7 @@ function Viewer({ style, store, activeView}: ViewerProps) {
   //#region View Management
 
   useEffect(() => {
-    if (!currentViewId) return;
+    if (!activeView) return;
 
     const viewData = views.get(activeView);
     if (viewData && cameraControlRef.current) {
