@@ -2,6 +2,13 @@
 
 All notable changes to this project will be documented in this file. See [standard-version](https://github.com/conventional-changelog/standard-version) for commit guidelines.
 
+### [0.1.3](https://github.com/Dijkstra-Solution/DijkstraViewer/compare/v0.1.2...v0.1.3) (2025-07-03)
+
+
+### Bug Fixes
+
+* cleaning up code related to views ([#9](https://github.com/Dijkstra-Solution/DijkstraViewer/issues/9)) ([720ea61](https://github.com/Dijkstra-Solution/DijkstraViewer/commit/720ea61876426c12f2a62ab00fc500c40b6bffa8))
+
 ### [0.1.2](https://github.com/Dijkstra-Solution/DijkstraViewer/compare/v0.1.1...v0.1.2) (2025-07-02)
 
 
