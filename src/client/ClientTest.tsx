@@ -3,13 +3,16 @@ import { Viewer } from "@/viewer/Viewer";
 import { DTOPolygon } from "@/viewerapi/dto/DTOPolygon";
 import { DTOComposite } from "@/viewerapi/dto/DTOComposite";
 import { generateUUID } from "three/src/math/MathUtils.js";
-import { useCallback, useState } from "react";
+import { useCallback, useMemo, useState } from "react";
 import { useEffect } from "react";
 // import { useViews } from "@/viewer/hooks/useViews";
-import { useDijkstraViewerStore } from "@/store/dijkstraViewerStore";
-import { useViewStore } from "@/store/viewStore";
+import { createDijkstraViewerStore } from "@/store/dijkstraViewerStore";
 
 export function ClientTest() {
+  const viewerStore1 = useMemo(() => createDijkstraViewerStore(), []);
+  const viewerStore2 = useMemo(() => createDijkstraViewerStore(), []);
+
+  const { Attributes, SetAttribute, Actions, on, Views } = viewerStore1();
   const { Attributes, SetAttribute, Actions, on, Views } =
     useDijkstraViewerStore();
   const { currentViewId } = useViewStore();
@@ -179,16 +182,24 @@ export function ClientTest() {
           <div key={view.viewId}>
             <button onClick={() => Actions.SetView(view.viewId)}>
               {view.displayName}
-            </button>
+              </button>
             <button onClick={() => Actions.DeleteView(view.viewId)}>
               Delete
-            </button>
+              </button>
           </div>
         ))}
         <label>{currentViewId}</label>
       </div>
 
+      <Viewer
+        store={viewerStore1}
       <Viewer initialView={"perspective"}></Viewer>
+        style={{ border: "1px solid white" }}
+      />
+      <Viewer
+        store={viewerStore2}
+        style={{ border: "1px solid white" }}
+      />
     </div>
   );
 }
