@@ -6,18 +6,34 @@ import { generateUUID } from "three/src/math/MathUtils.js";
 import { useCallback, useState } from "react";
 import { useEffect } from "react";
 // import { useViews } from "@/viewer/hooks/useViews";
-import { useDijkstraViewerStore } from "@/store/dijkstraViewerStore";
+import {
+  EntityProps,
+  useDijkstraViewerStore,
+} from "@/store/dijkstraViewerStore";
 import { useViewStore } from "@/store/viewStore";
+import { PolygonProps, PolygonFactory } from "@/viewerapi/dto/Polygon";
 
 export function ClientTest() {
-  const { Attributes, SetAttribute, Actions, on, Views } =
-    useDijkstraViewerStore();
+  const {
+    Attributes,
+    SetAttribute,
+    Actions,
+    on,
+    Views,
+    entityData,
+    addEntity,
+    removeEntity,
+    setEntityData,
+    updateEntity,
+  } = useDijkstraViewerStore();
   const { currentViewId } = useViewStore();
 
   const [shiftHeld, setShiftHeld] = useState(false);
   const [controlHeld, setControlHeld] = useState(false);
 
   const [selectedGuids, setSelectedGuids] = useState<string[]>([]);
+
+  const [entities, setEntities] = useState<EntityProps[]>([]);
 
   function upHandler({ key }) {
     if (key === "Shift") {
@@ -147,18 +163,49 @@ export function ClientTest() {
           onClick={() => {
             Actions.SelectPoints(1, (surfacePoints) => {
               console.log(surfacePoints[0]);
-              const box = createBox({
-                x: Math.round(
-                  surfacePoints[0].point.x + surfacePoints[0].normal.x / 2
-                ),
-                y: Math.round(
-                  surfacePoints[0].point.y + surfacePoints[0].normal.y / 2
-                ),
-                z: Math.round(
-                  surfacePoints[0].point.z + surfacePoints[0].normal.z / 2
-                ),
+
+              const entityData: PolygonProps = PolygonFactory({
+                guid: generateUUID(),
+                points: [
+                  {
+                    x: surfacePoints[0].point.x - 0.5,
+                    y: surfacePoints[0].point.y,
+                    z: surfacePoints[0].point.z + 0.5,
+                  },
+                  {
+                    x: surfacePoints[0].point.x + 0.5,
+                    y: surfacePoints[0].point.y,
+                    z: surfacePoints[0].point.z + 0.5,
+                  },
+                  {
+                    x: surfacePoints[0].point.x + 0.5,
+                    y: surfacePoints[0].point.y,
+                    z: surfacePoints[0].point.z - 0.5,
+                  },
+                  {
+                    x: surfacePoints[0].point.x - 0.5,
+                    y: surfacePoints[0].point.y,
+                    z: surfacePoints[0].point.z - 0.5,
+                  },
+                ],
+                color: "ff0000",
               });
-              Actions.AddEntity(box);
+              setEntities((prev) => [...prev, entityData]);
+
+              addEntity(entityData);
+
+              // const box = createBox({
+              //   x: Math.round(
+              //     surfacePoints[0].point.x + surfacePoints[0].normal.x / 2
+              //   ),
+              //   y: Math.round(
+              //     surfacePoints[0].point.y + surfacePoints[0].normal.y / 2
+              //   ),
+              //   z: Math.round(
+              //     surfacePoints[0].point.z + surfacePoints[0].normal.z / 2
+              //   ),
+              // });
+              // Actions.AddEntity(box);
             });
           }}
         >

@@ -18,9 +18,14 @@ import React, {
   useRef,
   useState,
 } from "react";
-import { useDijkstraViewerStore } from "@/store/dijkstraViewerStore";
+import {
+  EntityProps,
+  useDijkstraViewerStore,
+} from "@/store/dijkstraViewerStore";
 import { useInteractionStore } from "../store/interactionStore";
 import { useViewStore } from "../store/viewStore";
+import { Polygon, PolygonProps } from "@/viewerapi/dto/Polygon";
+import { Circle, CircleProps } from "@/viewerapi/dto/Circle";
 
 interface ViewerProps {
   initialView?: string | (() => void);
@@ -42,7 +47,7 @@ function Viewer({ style }: ViewerProps) {
     smoothTime?: number;
   }>({});
 
-  const { Attributes, fire } = useDijkstraViewerStore();
+  const { Attributes, fire, entityData } = useDijkstraViewerStore();
   const { Hover, Selection } = Attributes;
   const entities = useDijkstraViewerStore((state) => state.entities);
 

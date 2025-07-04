@@ -1,3 +1,5 @@
+import { PolygonProps } from "@/viewerapi/dto/Polygon";
+import { CircleProps } from "@/viewerapi/dto/Circle";
 import { DTOEntity } from "@/viewerapi";
 import { BufferGeometry } from "three";
 import { create } from "zustand";
@@ -88,7 +90,7 @@ type ViewerActions = {
     CreateView: (
       viewId: string,
       displayName?: string,
-      settings?: object //TODO
+      settings?: ViewSettings //TODO
     ) => boolean;
     DeleteView: (viewId: string) => void;
     SetView: (viewId: string, animate?: boolean) => boolean;
@@ -126,6 +128,7 @@ interface Attributes {
   };
 }
 
+export type EntityProps = PolygonProps | CircleProps;
 type DijkstraViewerStore = ViewerEventHandler &
   ViewerActions &
   Views & { Attributes: Attributes } & {
@@ -135,6 +138,12 @@ type DijkstraViewerStore = ViewerEventHandler &
     ): void;
   } & {
     entities: Map<string, DTOEntity>;
+  } & {
+    entityData: EntityProps[];
+    setEntityData: (data: EntityProps[]) => void;
+    addEntity: (entity: EntityProps) => void;
+    updateEntity: (guid: string, updatedEntity: EntityProps) => void;
+    removeEntity: (guid: string) => void;
   };
 
 export const useDijkstraViewerStore = create<DijkstraViewerStore>(
@@ -367,6 +376,20 @@ export const useDijkstraViewerStore = create<DijkstraViewerStore>(
             ...patch,
           },
         },
+      })),
+    entityData: [],
+    setEntityData: (data: EntityProps[]) => set({ entityData: data }),
+    addEntity: (entity: EntityProps) =>
+      set((state) => ({ entityData: [...state.entityData, entity] })),
+    removeEntity: (guid: string) =>
+      set((state) => ({
+        entityData: state.entityData.filter((entity) => entity.guid !== guid),
+      })),
+    updateEntity: (guid: string, updatedEntity: EntityProps) =>
+      set((state) => ({
+        entityData: state.entityData.map((entity) =>
+          entity.guid === guid ? { ...entity, ...updatedEntity } : entity
+        ),
       })),
   })
 );
