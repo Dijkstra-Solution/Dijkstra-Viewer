@@ -1,6 +1,7 @@
+import { createInteractionStore, InteractionStore } from "./interactionStore";
 import { DTOEntity } from "@/viewerapi";
 import { BufferGeometry } from "three";
-import { create } from "zustand";
+import { create, StoreApi, UseBoundStore } from "zustand";
 import { useViewStore, ViewSettings, ViewStore } from "./viewStore"; // import view store
 
 export interface SurfacePoint {
@@ -135,6 +136,8 @@ export type DijkstraViewerStore = ViewerEventHandler &
     ): void;
   } & {
     entities: Map<string, DTOEntity>;
+  } & {
+    InteractionStore: UseBoundStore<StoreApi<InteractionStore>>;
   };
 
 export const createDijkstraViewerStore = () =>
@@ -368,4 +371,6 @@ export const createDijkstraViewerStore = () =>
           },
         },
       })),
+
+    InteractionStore: createInteractionStore(),
   }));

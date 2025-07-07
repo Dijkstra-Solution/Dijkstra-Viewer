@@ -49,7 +49,8 @@ export function ClientTest() {
     Attributes.Hover.Enabled = true;
     Attributes.Selection.Enabled = true;
     Attributes.Viewer.BackgroundColor = 0x242424;
-
+    Attributes.Hover.Color = 0xe85620;
+    Attributes.Selection.Color = 0x883f24;
     on("StatusMessageChanged", ({ message }) => {
       console.log(message);
     });
@@ -130,10 +131,6 @@ export function ClientTest() {
     console.log(Views);
     return composite;
   };
-
-  useEffect(() => {
-    console.log(Views);
-  }, []);
 
   return (
     <div

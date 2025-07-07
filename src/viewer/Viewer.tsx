@@ -18,7 +18,7 @@ import React, {
   useRef,
   useState,
 } from "react";
-import { useInteractionStore } from "../store/interactionStore";
+import { createInteractionStore } from "../store/interactionStore";
 import { useViewStore } from "../store/viewStore";
 import type { UseBoundStore, StoreApi } from "zustand";
 import type { DijkstraViewerStore } from "@/store/dijkstraViewerStore";
@@ -52,6 +52,7 @@ function Viewer({ style, store, activeView }: ViewerProps) {
     views,
     currentViewId: globalView,
   } = useViewStore();
+
   const activeViewId = activeView ?? globalView;
 
   // Ref to track if we're currently applying a view change
@@ -149,23 +150,22 @@ function Viewer({ style, store, activeView }: ViewerProps) {
   //#endregion
 
   //#region Interaction Store
-  const {
-    hoveredGUID,
-    setHoveredGUID,
-    hoveredObjects,
-    setHoveredObjects,
-    hoverIndex,
-    setHoverIndex,
-    hoveredOutlineGeometry,
-    setHoveredOutlineGeometry,
-    selectedGUIDs,
-    setSelectedGUIDs,
-    selectedOutlineGeometry,
-    setSelectedOutlineGeometry,
-    intersectionPoint,
-    setIntersectionPoint,
-    cycleHover,
-  } = useInteractionStore();
+  const interactionStore = store((state) => state.InteractionStore);
+
+  const hoveredGUID = interactionStore((s) => s.hoveredGUID);
+  const setHoveredGUID = interactionStore((s) => s.setHoveredGUID);
+  const hoverIndex = interactionStore((s) => s.hoverIndex);
+  const setHoverIndex = interactionStore((s) => s.setHoverIndex);
+  const cycleHover = interactionStore((s) => s.cycleHover);
+
+  const selectedGUIDs = interactionStore((s) => s.selectedGUIDs);
+  const setSelectedGUIDs = interactionStore((s) => s.setSelectedGUIDs);
+
+  const intersectionPoint = interactionStore((s) => s.intersectionPoint);
+  const setIntersectionPoint = interactionStore((s) => s.setIntersectionPoint);
+
+  const hoveredObjects = interactionStore((s) => s.hoveredObjects);
+  const setHoveredObjects = interactionStore((s) => s.setHoveredObjects);
   //#endregion
 
   const createOutlineGeometry = useCallback(
@@ -217,13 +217,16 @@ function Viewer({ style, store, activeView }: ViewerProps) {
     [mergedGeometry]
   );
 
-  //#region Hover
+  //#region Selection & Hover
+  //Update Selected Outline Geometry
+  const selectedOutlineGeometry = useMemo(() => {
+    return createOutlineGeometry(selectedGUIDs);
+  }, [selectedGUIDs, createOutlineGeometry]);
+
   //Update Hovered Outline Geometry
-  useEffect(() => {
-    const lsGeo = createOutlineGeometry(hoveredGUID);
-    setHoveredOutlineGeometry(lsGeo);
-    return () => lsGeo?.dispose();
-  }, [hoveredGUID, createOutlineGeometry, setHoveredOutlineGeometry]);
+  const hoveredOutlineGeometry = useMemo(() => {
+    return createOutlineGeometry(hoveredGUID);
+  }, [hoveredGUID, createOutlineGeometry]);
 
   //Cycle Hovered Objects    //TODO - bind this to action (ie CycleHover())
   useEffect(() => {
@@ -232,7 +235,6 @@ function Viewer({ style, store, activeView }: ViewerProps) {
         event.preventDefault();
         cycleHover();
         const newIndex = (hoverIndex + 1) % (hoveredObjects.length ?? 1);
-        // setHoverIndex(newIndex);
         const ind = hoveredObjects[newIndex];
         if (ind != undefined && ind != null)
           setHoveredGUID(mergedGeometry?.userData?.faceMap?.[ind]);
@@ -244,17 +246,7 @@ function Viewer({ style, store, activeView }: ViewerProps) {
     return () => {
       document.removeEventListener("keydown", handleKeyDown);
     };
-  }, [hoveredObjects, hoverIndex, mergedGeometry, cycleHover, setHoveredGUID]);
-
-  //#endregion
-
-  //#region Selection
-  //Update Selected Outline Geometry
-  useEffect(() => {
-    const lsGeo = createOutlineGeometry(selectedGUIDs);
-    setSelectedOutlineGeometry(lsGeo);
-    return () => lsGeo?.dispose();
-  }, [selectedGUIDs, createOutlineGeometry, setSelectedOutlineGeometry]);
+  }, [cycleHover, hoverIndex, hoveredObjects, setHoveredGUID, mergedGeometry]);
   //#endregion
 
   //#region Sphere on Intersection
@@ -387,10 +379,8 @@ function Viewer({ style, store, activeView }: ViewerProps) {
   const handleMouseMove = useCallback(
     (event: React.PointerEvent<HTMLDivElement>) => {
       if (!Hover.Enabled) return;
-      if (!Hover.Enabled) return;
       const ctx = three.current;
       if (!ctx) return;
-
       const { camera, raycaster, scene } = ctx;
       const mouse = getMouse(event);
       raycaster.layers.set(0);
@@ -403,7 +393,6 @@ function Viewer({ style, store, activeView }: ViewerProps) {
             .map((i) => i.faceIndex)
             .filter((i) => i != undefined && i != null)
         );
-
         let guid = undefined;
         const ind = intersects[0].faceIndex;
         if (ind != undefined && ind != null) {
