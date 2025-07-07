@@ -18,13 +18,11 @@ import React, {
   useRef,
   useState,
 } from "react";
-import { createInteractionStore } from "../store/interactionStore";
-import { useViewStore } from "../store/viewStore";
 import type { UseBoundStore, StoreApi } from "zustand";
-import type { DijkstraViewerStore } from "@/store/dijkstraViewerStore";
+import type { InternalDijkstraViewerStore } from "@/store/dijkstraViewerStore";
 interface ViewerProps {
   activeView: string;
-  store: UseBoundStore<StoreApi<DijkstraViewerStore>>;
+  store: UseBoundStore<StoreApi<InternalDijkstraViewerStore>>;
   style?: React.CSSProperties; // Styles for the container
   className?: string; // CSS class for the container
 }
@@ -45,15 +43,14 @@ function Viewer({ style, store, activeView }: ViewerProps) {
 
   const { Attributes, fire } = store((state) => state);
   const { Hover, Selection } = Attributes;
-  const entities = store((state) => state.entities);
+  const entities = store((state) => state._internal.entities);
 
-  const {
-    updateViewPosition,
-    views,
-    currentViewId: globalView,
-  } = useViewStore();
+  const updateViewPosition = store((s) => s._internal.updateViewPosition);
 
-  const activeViewId = activeView ?? globalView;
+  // Map<string, ViewData>
+  const views = store((s) => s.Views);
+
+  const activeViewId = activeView ?? "perspective";
 
   // Ref to track if we're currently applying a view change
   const isApplyingViewChange = useRef(false);
@@ -61,6 +58,7 @@ function Viewer({ style, store, activeView }: ViewerProps) {
   const saveStateTimer = useRef<NodeJS.Timeout | null>(null);
 
   const mergedGeometry = useMemo(() => {
+    console.log("Merging geometries...");
     const dtos = Array.from(entities.values());
     if (dtos.length === 0) return new THREE.BufferGeometry();
 
@@ -150,24 +148,25 @@ function Viewer({ style, store, activeView }: ViewerProps) {
   //#endregion
 
   //#region Interaction Store
-  const interactionStore = store((state) => state.InteractionStore);
 
-  const hoveredGUID = interactionStore((s) => s.hoveredGUID);
-  const setHoveredGUID = interactionStore((s) => s.setHoveredGUID);
-  const hoverIndex = interactionStore((s) => s.hoverIndex);
-  const setHoverIndex = interactionStore((s) => s.setHoverIndex);
-  const cycleHover = interactionStore((s) => s.cycleHover);
+  const hoveredGUID = store((s) => s._internal.getHoveredGUID());
+  const setHoveredGUID = store((s) => s._internal.setHoveredGUID);
+  const hoverIndex = store((s) => s._internal.getHoverIndex());
+  const setHoverIndex = store((s) => s._internal.setHoverIndex);
+  const cycleHover = store((s) => s._internal.cycleHover);
 
-  const selectedGUIDs = interactionStore((s) => s.selectedGUIDs);
-  const setSelectedGUIDs = interactionStore((s) => s.setSelectedGUIDs);
+  const selectedGUIDs = store((s) => s._internal.getSelectedGUIDs());
+  const setSelectedGUIDs = store((s) => s._internal.setSelectedGUIDs);
 
-  const intersectionPoint = interactionStore((s) => s.intersectionPoint);
-  const setIntersectionPoint = interactionStore((s) => s.setIntersectionPoint);
+  const intersectionPoint = store((s) => s._internal.getIntersectionPoint());
+  const setIntersectionPoint = store((s) => s._internal.setIntersectionPoint);
 
-  const hoveredObjects = interactionStore((s) => s.hoveredObjects);
-  const setHoveredObjects = interactionStore((s) => s.setHoveredObjects);
+  const hoveredObjects = store((s) => s._internal.getHoveredObjects());
+  const setHoveredObjects = store((s) => s._internal.setHoveredObjects);
+
   //#endregion
 
+  //#region Selection & Hover
   const createOutlineGeometry = useCallback(
     (guids: Set<string> | string | null) => {
       if (!guids || (guids instanceof Set && guids.size === 0)) return null;
@@ -216,8 +215,6 @@ function Viewer({ style, store, activeView }: ViewerProps) {
     },
     [mergedGeometry]
   );
-
-  //#region Selection & Hover
   //Update Selected Outline Geometry
   const selectedOutlineGeometry = useMemo(() => {
     return createOutlineGeometry(selectedGUIDs);
@@ -225,6 +222,7 @@ function Viewer({ style, store, activeView }: ViewerProps) {
 
   //Update Hovered Outline Geometry
   const hoveredOutlineGeometry = useMemo(() => {
+    console.log(hoveredGUID);
     return createOutlineGeometry(hoveredGUID);
   }, [hoveredGUID, createOutlineGeometry]);
 
