@@ -462,6 +462,7 @@ export const createDijkstraViewerStore = () =>
           viewStore.getState().updateViewPosition(viewId, position, target, up);
           set((state) => ({
             ...state,
+            Views: viewStore.getState().views,
           }));
           get().fire("ViewChanged", { view: viewId });
         },
