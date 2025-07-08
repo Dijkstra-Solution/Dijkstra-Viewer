@@ -362,6 +362,10 @@ export const createDijkstraViewerStore = () =>
           }
 
           viewStore.getState().unregisterView(viewId);
+          set((state) => ({
+            ...state,
+            Views: viewStore.getState().views,
+          }));
           get().fire("ViewDeleted", { view: viewId });
 
           // Update the Views array by filtering out the deleted view
@@ -378,15 +382,25 @@ export const createDijkstraViewerStore = () =>
         },
         ResetView(viewId, animate) {
           viewStore.getState().resetView(viewId, animate);
+          set((state) => ({
+            ...state,
+            Views: viewStore.getState().views,
+          }));
           get().fire("ViewReset", { view: viewId });
         },
         ResetAllViews() {
           viewStore.getState().resetAllViews();
+          set((state) => ({
+            ...state,
+            Views: viewStore.getState().views,
+          }));
         },
         //#endregion
       },
       //#endregion
+
       Views: viewStore.getState().views,
+
       Attributes: {
         Hover: {
           Enabled: false,
