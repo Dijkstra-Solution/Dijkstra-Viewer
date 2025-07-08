@@ -13,6 +13,8 @@ export function ClientTest() {
   const { Actions, Views, Attributes, SetAttribute, on } =
     viewerStore1.getState();
 
+  const viewerStore2 = useMemo(() => createDijkstraViewerStore(), []);
+
   const [view1, setView1] = useState("perspective");
   const [view2, setView2] = useState("top");
 
@@ -49,7 +51,8 @@ export function ClientTest() {
     Attributes.Hover.Enabled = true;
     Attributes.Selection.Enabled = true;
     Attributes.Viewer.BackgroundColor = 0x242424;
-
+    Attributes.Hover.Color = 0xe85620;
+    Attributes.Selection.Color = 0x883f24;
     on("StatusMessageChanged", ({ message }) => {
       console.log(message);
     });
@@ -131,10 +134,6 @@ export function ClientTest() {
     return composite;
   };
 
-  useEffect(() => {
-    console.log(Views);
-  }, []);
-
   return (
     <div
       style={{
@@ -205,7 +204,7 @@ export function ClientTest() {
       />
       <Viewer
         activeView={view2}
-        store={viewerStore1}
+        store={viewerStore2}
         style={{ border: "1px solid white" }}
       />
     </div>

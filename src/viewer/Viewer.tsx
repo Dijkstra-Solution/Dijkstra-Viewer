@@ -18,13 +18,11 @@ import React, {
   useRef,
   useState,
 } from "react";
-import { useInteractionStore } from "../store/interactionStore";
-import { useViewStore } from "../store/viewStore";
 import type { UseBoundStore, StoreApi } from "zustand";
-import type { DijkstraViewerStore } from "@/store/dijkstraViewerStore";
+import type { InternalDijkstraViewerStore } from "@/store/dijkstraViewerStore";
 interface ViewerProps {
   activeView: string;
-  store: UseBoundStore<StoreApi<DijkstraViewerStore>>;
+  store: UseBoundStore<StoreApi<InternalDijkstraViewerStore>>;
   style?: React.CSSProperties; // Styles for the container
   className?: string; // CSS class for the container
 }
@@ -45,14 +43,14 @@ function Viewer({ style, store, activeView }: ViewerProps) {
 
   const { Attributes, fire } = store((state) => state);
   const { Hover, Selection } = Attributes;
-  const entities = store((state) => state.entities);
+  const entities = store((state) => state._internal.entities);
 
-  const {
-    updateViewPosition,
-    views,
-    currentViewId: globalView,
-  } = useViewStore();
-  const activeViewId = activeView ?? globalView;
+  const updateViewPosition = store((s) => s._internal.updateViewPosition);
+
+  // Map<string, ViewData>
+  const views = store((s) => s.Views);
+
+  const activeViewId = activeView ?? "perspective";
 
   // Ref to track if we're currently applying a view change
   const isApplyingViewChange = useRef(false);
@@ -149,25 +147,25 @@ function Viewer({ style, store, activeView }: ViewerProps) {
   //#endregion
 
   //#region Interaction Store
-  const {
-    hoveredGUID,
-    setHoveredGUID,
-    hoveredObjects,
-    setHoveredObjects,
-    hoverIndex,
-    setHoverIndex,
-    hoveredOutlineGeometry,
-    setHoveredOutlineGeometry,
-    selectedGUIDs,
-    setSelectedGUIDs,
-    selectedOutlineGeometry,
-    setSelectedOutlineGeometry,
-    intersectionPoint,
-    setIntersectionPoint,
-    cycleHover,
-  } = useInteractionStore();
+
+  const hoveredGUID = store((s) => s._internal.getHoveredGUID());
+  const setHoveredGUID = store((s) => s._internal.setHoveredGUID);
+  const hoverIndex = store((s) => s._internal.getHoverIndex());
+  const setHoverIndex = store((s) => s._internal.setHoverIndex);
+  const cycleHover = store((s) => s._internal.cycleHover);
+
+  const selectedGUIDs = store((s) => s._internal.getSelectedGUIDs());
+  const setSelectedGUIDs = store((s) => s._internal.setSelectedGUIDs);
+
+  const intersectionPoint = store((s) => s._internal.getIntersectionPoint());
+  const setIntersectionPoint = store((s) => s._internal.setIntersectionPoint);
+
+  const hoveredObjects = store((s) => s._internal.getHoveredObjects());
+  const setHoveredObjects = store((s) => s._internal.setHoveredObjects);
+
   //#endregion
 
+  //#region Selection & Hover
   const createOutlineGeometry = useCallback(
     (guids: Set<string> | string | null) => {
       if (!guids || (guids instanceof Set && guids.size === 0)) return null;
@@ -216,14 +214,15 @@ function Viewer({ style, store, activeView }: ViewerProps) {
     },
     [mergedGeometry]
   );
+  //Update Selected Outline Geometry
+  const selectedOutlineGeometry = useMemo(() => {
+    return createOutlineGeometry(selectedGUIDs);
+  }, [selectedGUIDs, createOutlineGeometry]);
 
-  //#region Hover
   //Update Hovered Outline Geometry
-  useEffect(() => {
-    const lsGeo = createOutlineGeometry(hoveredGUID);
-    setHoveredOutlineGeometry(lsGeo);
-    return () => lsGeo?.dispose();
-  }, [hoveredGUID, createOutlineGeometry, setHoveredOutlineGeometry]);
+  const hoveredOutlineGeometry = useMemo(() => {
+    return createOutlineGeometry(hoveredGUID);
+  }, [hoveredGUID, createOutlineGeometry]);
 
   //Cycle Hovered Objects    //TODO - bind this to action (ie CycleHover())
   useEffect(() => {
@@ -232,7 +231,6 @@ function Viewer({ style, store, activeView }: ViewerProps) {
         event.preventDefault();
         cycleHover();
         const newIndex = (hoverIndex + 1) % (hoveredObjects.length ?? 1);
-        // setHoverIndex(newIndex);
         const ind = hoveredObjects[newIndex];
         if (ind != undefined && ind != null)
           setHoveredGUID(mergedGeometry?.userData?.faceMap?.[ind]);
@@ -244,17 +242,7 @@ function Viewer({ style, store, activeView }: ViewerProps) {
     return () => {
       document.removeEventListener("keydown", handleKeyDown);
     };
-  }, [hoveredObjects, hoverIndex, mergedGeometry, cycleHover, setHoveredGUID]);
-
-  //#endregion
-
-  //#region Selection
-  //Update Selected Outline Geometry
-  useEffect(() => {
-    const lsGeo = createOutlineGeometry(selectedGUIDs);
-    setSelectedOutlineGeometry(lsGeo);
-    return () => lsGeo?.dispose();
-  }, [selectedGUIDs, createOutlineGeometry, setSelectedOutlineGeometry]);
+  }, [cycleHover, hoverIndex, hoveredObjects, setHoveredGUID, mergedGeometry]);
   //#endregion
 
   //#region Sphere on Intersection
@@ -268,7 +256,6 @@ function Viewer({ style, store, activeView }: ViewerProps) {
   //TODO - refine this (useThree / put into separate component)
   const three = useRef<{
     scene: THREE.Scene;
-    camera: THREE.PerspectiveCamera;
     raycaster: THREE.Raycaster;
   }>(null);
 
@@ -291,9 +278,9 @@ function Viewer({ style, store, activeView }: ViewerProps) {
         const ctx = three.current;
         if (!ctx) return;
 
-        const { scene, camera, raycaster } = ctx;
+        const { scene, raycaster } = ctx;
         const mouse = getMouse(event);
-        raycaster.setFromCamera(mouse, camera);
+        raycaster.setFromCamera(mouse, cameraControlRef.current!.camera);
         raycaster.layers.set(0);
         raycaster.firstHitOnly = false;
         const intersects = raycaster.intersectObjects(scene.children);
@@ -387,15 +374,13 @@ function Viewer({ style, store, activeView }: ViewerProps) {
   const handleMouseMove = useCallback(
     (event: React.PointerEvent<HTMLDivElement>) => {
       if (!Hover.Enabled) return;
-      if (!Hover.Enabled) return;
       const ctx = three.current;
       if (!ctx) return;
-
-      const { camera, raycaster, scene } = ctx;
+      const { raycaster, scene } = ctx;
       const mouse = getMouse(event);
       raycaster.layers.set(0);
       raycaster.firstHitOnly = false;
-      raycaster.setFromCamera(mouse, camera);
+      raycaster.setFromCamera(mouse, cameraControlRef.current!.camera);
       const intersects = raycaster.intersectObjects(scene.children);
       if (intersects.length > 0) {
         setHoveredObjects(
@@ -403,7 +388,6 @@ function Viewer({ style, store, activeView }: ViewerProps) {
             .map((i) => i.faceIndex)
             .filter((i) => i != undefined && i != null)
         );
-
         let guid = undefined;
         const ind = intersects[0].faceIndex;
         if (ind != undefined && ind != null) {
@@ -551,15 +535,20 @@ function Viewer({ style, store, activeView }: ViewerProps) {
   const angle = (3 * Math.PI) / 4;
   //#endregion
 
+  const layers = useMemo(() => {
+    const layers = new THREE.Layers();
+    layers.enable(0); // Default layer for main objects
+    layers.enable(1); // Layer for outlines and intersection sphere
+    return layers;
+  }, []);
+
   return (
     <div style={containerStyles} ref={containerRef}>
       <Canvas
         camera={{ position: [0, 0, 5] }}
-        onCreated={({ scene, camera, raycaster }) => {
-          camera.layers.enableAll();
+        onCreated={({ scene, raycaster }) => {
           three.current = {
             scene,
-            camera: camera as THREE.PerspectiveCamera,
             raycaster,
           };
         }}
@@ -618,6 +607,7 @@ function Viewer({ style, store, activeView }: ViewerProps) {
           zoom={cameraZoom}
           near={0.1}
           far={1000}
+          layers={layers}
         />
         <PerspectiveCamera
           makeDefault={!useOrthographic}
@@ -626,6 +616,7 @@ function Viewer({ style, store, activeView }: ViewerProps) {
           fov={75}
           near={0.1}
           far={1000}
+          layers={layers}
         />
         <CameraControls
           ref={cameraControlRef}
