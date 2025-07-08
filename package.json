@@ -1,6 +1,6 @@
 {
   "name": "@dijkstra-solution/dijkstra-viewer",
-  "version": "0.1.4",
+  "version": "0.1.5",
   "type": "module",
   "description": "Dijkstra Viewer Interface for Developers",
   "homepage": "https://github.com/Dijkstra-Solution/DijkstraViewer",
