@@ -58,7 +58,6 @@ function Viewer({ style, store, activeView }: ViewerProps) {
   const saveStateTimer = useRef<NodeJS.Timeout | null>(null);
 
   const mergedGeometry = useMemo(() => {
-    console.log("Merging geometries...");
     const dtos = Array.from(entities.values());
     if (dtos.length === 0) return new THREE.BufferGeometry();
 
@@ -222,7 +221,6 @@ function Viewer({ style, store, activeView }: ViewerProps) {
 
   //Update Hovered Outline Geometry
   const hoveredOutlineGeometry = useMemo(() => {
-    console.log(hoveredGUID);
     return createOutlineGeometry(hoveredGUID);
   }, [hoveredGUID, createOutlineGeometry]);
 
@@ -258,7 +256,6 @@ function Viewer({ style, store, activeView }: ViewerProps) {
   //TODO - refine this (useThree / put into separate component)
   const three = useRef<{
     scene: THREE.Scene;
-    camera: THREE.PerspectiveCamera;
     raycaster: THREE.Raycaster;
   }>(null);
 
@@ -281,9 +278,9 @@ function Viewer({ style, store, activeView }: ViewerProps) {
         const ctx = three.current;
         if (!ctx) return;
 
-        const { scene, camera, raycaster } = ctx;
+        const { scene, raycaster } = ctx;
         const mouse = getMouse(event);
-        raycaster.setFromCamera(mouse, camera);
+        raycaster.setFromCamera(mouse, cameraControlRef.current!.camera);
         raycaster.layers.set(0);
         raycaster.firstHitOnly = false;
         const intersects = raycaster.intersectObjects(scene.children);
@@ -379,11 +376,11 @@ function Viewer({ style, store, activeView }: ViewerProps) {
       if (!Hover.Enabled) return;
       const ctx = three.current;
       if (!ctx) return;
-      const { camera, raycaster, scene } = ctx;
+      const { raycaster, scene } = ctx;
       const mouse = getMouse(event);
       raycaster.layers.set(0);
       raycaster.firstHitOnly = false;
-      raycaster.setFromCamera(mouse, camera);
+      raycaster.setFromCamera(mouse, cameraControlRef.current!.camera);
       const intersects = raycaster.intersectObjects(scene.children);
       if (intersects.length > 0) {
         setHoveredObjects(
@@ -538,15 +535,20 @@ function Viewer({ style, store, activeView }: ViewerProps) {
   const angle = (3 * Math.PI) / 4;
   //#endregion
 
+  const layers = useMemo(() => {
+    const layers = new THREE.Layers();
+    layers.enable(0); // Default layer for main objects
+    layers.enable(1); // Layer for outlines and intersection sphere
+    return layers;
+  }, []);
+
   return (
     <div style={containerStyles} ref={containerRef}>
       <Canvas
         camera={{ position: [0, 0, 5] }}
-        onCreated={({ scene, camera, raycaster }) => {
-          camera.layers.enableAll();
+        onCreated={({ scene, raycaster }) => {
           three.current = {
             scene,
-            camera: camera as THREE.PerspectiveCamera,
             raycaster,
           };
         }}
@@ -605,6 +607,7 @@ function Viewer({ style, store, activeView }: ViewerProps) {
           zoom={cameraZoom}
           near={0.1}
           far={1000}
+          layers={layers}
         />
         <PerspectiveCamera
           makeDefault={!useOrthographic}
@@ -613,6 +616,7 @@ function Viewer({ style, store, activeView }: ViewerProps) {
           fov={75}
           near={0.1}
           far={1000}
+          layers={layers}
         />
         <CameraControls
           ref={cameraControlRef}

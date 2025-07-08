@@ -233,7 +233,6 @@ export const createDijkstraViewerStore = () =>
         //#region Entity Management
         AddEntity(entity) {
           if (!get()._internal.entities.has(entity.guid)) {
-            console.log("adding", entity.guid);
             set((state) => {
               const newEntities = new Map(state._internal.entities);
               newEntities.set(entity.guid, entity);
@@ -248,7 +247,6 @@ export const createDijkstraViewerStore = () =>
           }
         },
         RemoveEntity(guid) {
-          console.log("removing", guid);
           if (get()._internal.entities.has(guid)) {
             set((state) => {
               const newEntities = new Map(state._internal.entities);
@@ -263,10 +261,8 @@ export const createDijkstraViewerStore = () =>
             });
             return;
           }
-          console.log("removed", guid);
         },
         ClearEntities() {
-          console.log("clearing");
           set((state) => ({
             ...state,
             _internal: {
@@ -308,13 +304,13 @@ export const createDijkstraViewerStore = () =>
         },
         SelectEdges(count, callback) {
           return () => {
-            console.log("selected", count, "edges");
+            console.info("selected", count, "edges");
             callback([]);
           };
         },
         SelectFaces(count, callback) {
           return () => {
-            console.log("selected", count, "faces");
+            console.info("selected", count, "faces");
             callback([]);
           };
         },
@@ -324,7 +320,6 @@ export const createDijkstraViewerStore = () =>
         CreateView(viewId, displayName: string, settings: ViewSettings) {
           // Check if the view already exists in this store with the same properties
           const existingViews = get().Views;
-          // console.log(typeof existingViews);
           const existingView = existingViews[viewId];
 
           // Only proceed if the view doesn't exist or has different properties
@@ -350,8 +345,6 @@ export const createDijkstraViewerStore = () =>
                 defaultSettings: settings,
               };
               // Check if view with this ID already exists
-              // const existingView = state.Views.get(viewId);
-
               const updatedViews = new Map(state.Views);
               updatedViews.set(viewId, newView);
               return { Views: updatedViews };
@@ -385,6 +378,7 @@ export const createDijkstraViewerStore = () =>
         },
         ResetView(viewId, animate) {
           viewStore.getState().resetView(viewId, animate);
+          get().fire("ViewReset", { view: viewId });
         },
         ResetAllViews() {
           viewStore.getState().resetAllViews();
@@ -392,7 +386,6 @@ export const createDijkstraViewerStore = () =>
         //#endregion
       },
       //#endregion
-      //TODO - merge with Adrián
       Views: viewStore.getState().views,
       Attributes: {
         Hover: {
@@ -464,7 +457,6 @@ export const createDijkstraViewerStore = () =>
             ...state,
             Views: viewStore.getState().views,
           }));
-          get().fire("ViewChanged", { view: viewId });
         },
       },
     };
