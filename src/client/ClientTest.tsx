@@ -60,6 +60,13 @@ export function ClientTest() {
     on("SelectionChanged", (payload) => {
       setSelectedGuids(payload.guids);
     });
+
+    Actions.CreateView("top2", "Top2", {
+      position: [5, 5, 5],
+      target: [0, 0, 0],
+      up: [0, 1, 0],
+      useOrthographicCamera: true,
+    });
     //eslint-disable-next-line
   }, []);
 
@@ -176,6 +183,7 @@ export function ClientTest() {
         >
           Toggle Hover
         </button>
+        <button onClick={() => Actions.ResetView(view1)}>Reset</button>
 
         <div style={{ display: "flex", gap: 12 }}>
           <div>
@@ -204,7 +212,7 @@ export function ClientTest() {
       />
       <Viewer
         activeView={view2}
-        store={viewerStore2}
+        store={viewerStore1}
         style={{ border: "1px solid white" }}
       />
     </div>

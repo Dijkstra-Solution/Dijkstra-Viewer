@@ -27,35 +27,125 @@ interface ViewerProps {
   className?: string; // CSS class for the container
 }
 function Viewer({ style, store, activeView }: ViewerProps) {
-  const [useOrthographic, setUseOrthographic] = useState(false);
-  const [cameraPosition, setCameraPosition] = useState([0, 0, 5]);
-  const [, setCameraTarget] = useState([0, 0, 0]);
-  const [cameraUp, setCameraUp] = useState([0, 1, 0]);
+  const updateViewPosition = store((s) => s._internal.updateViewPosition);
+
+  //#region View Hooks
+  const activeViewData = useMemo(() => {
+    return store.getState().Views.get(activeView);
+  }, [activeView, store((s) => s.Views)]);
+  // }, [activeView, store((s) => s.Views), store((s) => s.Views.size)]);
+
+  const activeViewId = useMemo(() => {
+    return activeViewData?.viewId ?? "perspective";
+  }, [activeViewData]);
+
+  const useOrthographic = useMemo(() => {
+    return activeViewData?.settings?.useOrthographicCamera ?? false;
+  }, [activeViewData]);
+
+  const cameraPosition = useMemo(() => {
+    return activeViewData?.settings?.position ?? [0, 0, 5];
+  }, [activeViewData]);
+
+  const cameraUp = useMemo(() => {
+    return activeViewData?.settings?.up ?? [0, 1, 0];
+  }, [activeViewData]);
+
+  const cameraConstraints = useMemo(() => {
+    return activeViewData?.settings?.constraints ?? {};
+  }, [activeViewData]);
+
   const [cameraZoom] = useState(12);
-  const [cameraConstraints, setCameraConstraints] = useState<{
-    azimuthRotateSpeed?: number;
-    polarRotateSpeed?: number;
-    truckSpeed?: number;
-    dollySpeed?: number;
-    draggingSmoothTime?: number;
-    smoothTime?: number;
-  }>({});
+
+  const cameraControlRef = useRef<CameraControls | null>(null);
+  // Ref to track if we're currently applying a view change
+  const isApplyingViewChange = useRef(false);
+  useEffect(() => {
+    // const viewData = views.get(activeView);
+    if (activeViewData?.settings && cameraControlRef.current) {
+      // Set flag to prevent saving during view application
+      console.log("Applying view change");
+      isApplyingViewChange.current = true;
+      setTimeout(() => {
+        if (cameraControlRef.current) {
+          cameraControlRef.current.setLookAt(
+            activeViewData.settings.position[0],
+            activeViewData.settings.position[1],
+            activeViewData.settings.position[2],
+            activeViewData.settings.target[0],
+            activeViewData.settings.target[1],
+            activeViewData.settings.target[2],
+            false
+          );
+        }
+      }, 2);
+
+      // Reset flag after a short delay to allow the camera to settle
+      setTimeout(() => {
+        isApplyingViewChange.current = false;
+        console.log("View change applied");
+      }, 150);
+    }
+  }, [activeViewData?.settings]);
+
+  // Debounce timer for saving camera state
+  const saveStateTimer = useRef<NodeJS.Timeout | null>(null);
+
+  // Debounced function to save camera state
+  const saveCameraState = useCallback(() => {
+    if (saveStateTimer.current) {
+      clearTimeout(saveStateTimer.current);
+    }
+    saveStateTimer.current = setTimeout(() => {
+      if (!cameraControlRef.current || isApplyingViewChange.current) return;
+
+      const position = new THREE.Vector3();
+      const target = new THREE.Vector3();
+
+      cameraControlRef.current.getPosition(position);
+      cameraControlRef.current.getTarget(target);
+      // Update the view settings with current camera state
+      updateViewPosition(
+        activeViewId,
+        [position.x, position.y, position.z],
+        [target.x, target.y, target.z],
+        [
+          cameraControlRef.current.camera.up.x,
+          cameraControlRef.current.camera.up.y,
+          cameraControlRef.current.camera.up.z,
+        ]
+      );
+    }, 100);
+  }, [activeViewId, updateViewPosition]);
+
+  // Camera update handler
+  const handleCameraUpdate = useCallback(() => {
+    if (!cameraControlRef.current || isApplyingViewChange.current) {
+      return;
+    }
+
+    const position = new THREE.Vector3();
+    const target = new THREE.Vector3();
+
+    cameraControlRef.current.getPosition(position);
+    cameraControlRef.current.getTarget(target);
+    // Save the camera state (debounced)
+    saveCameraState();
+  }, [saveCameraState]);
+
+  // Cleanup timer on unmount
+  useEffect(() => {
+    return () => {
+      if (saveStateTimer.current) {
+        clearTimeout(saveStateTimer.current);
+      }
+    };
+  }, []);
+  //#endregion
 
   const { Attributes, fire } = store((state) => state);
   const { Hover, Selection } = Attributes;
   const entities = store((state) => state._internal.entities);
-
-  const updateViewPosition = store((s) => s._internal.updateViewPosition);
-
-  // Map<string, ViewData>
-  const views = store((s) => s.Views);
-
-  const activeViewId = activeView ?? "perspective";
-
-  // Ref to track if we're currently applying a view change
-  const isApplyingViewChange = useRef(false);
-  // Debounce timer for saving camera state
-  const saveStateTimer = useRef<NodeJS.Timeout | null>(null);
 
   const mergedGeometry = useMemo(() => {
     const dtos = Array.from(entities.values());
@@ -82,39 +172,7 @@ function Viewer({ style, store, activeView }: ViewerProps) {
     return merged;
   }, [entities]);
 
-  const cameraControlRef = useRef<CameraControls | null>(null);
   const containerRef = useRef<HTMLDivElement>(null);
-
-  // Debounced function to save camera state
-  const saveCameraState = useCallback(() => {
-    if (saveStateTimer.current) {
-      clearTimeout(saveStateTimer.current);
-    }
-
-    saveStateTimer.current = setTimeout(() => {
-      if (
-        !activeViewId ||
-        !cameraControlRef.current ||
-        isApplyingViewChange.current
-      ) {
-        return;
-      }
-
-      const position = new THREE.Vector3();
-      const target = new THREE.Vector3();
-
-      cameraControlRef.current.getPosition(position);
-      cameraControlRef.current.getTarget(target);
-
-      // Update the view settings with current camera state
-      updateViewPosition(
-        activeViewId,
-        [position.x, position.y, position.z],
-        [target.x, target.y, target.z],
-        cameraUp
-      );
-    }, 100);
-  }, [activeViewId, updateViewPosition, cameraUp]);
 
   //#region Materials
   const mergedGeometryMaterial = useMemo(() => {
@@ -414,104 +472,6 @@ function Viewer({ style, store, activeView }: ViewerProps) {
   );
   //#endregion
 
-  //#region View Management
-
-  useEffect(() => {
-    if (!activeView) return;
-
-    const viewData = views.get(activeView);
-    if (viewData && cameraControlRef.current) {
-      const settings = viewData.settings;
-
-      // Set flag to prevent saving during view application
-      isApplyingViewChange.current = true;
-
-      setUseOrthographic(!!settings.useOrthographicCamera);
-
-      if (settings.constraints) {
-        setCameraConstraints(settings.constraints);
-      } else {
-        setCameraConstraints({});
-      }
-      setTimeout(() => {
-        if (cameraControlRef.current && activeView === activeView) {
-          cameraControlRef.current.setLookAt(
-            settings.position[0],
-            settings.position[1],
-            settings.position[2],
-            settings.target[0],
-            settings.target[1],
-            settings.target[2],
-            false
-          );
-        }
-      }, 1);
-
-      // Apply constraints
-      if (settings.constraints) {
-        if (settings.constraints.azimuthRotateSpeed !== undefined)
-          cameraControlRef.current.azimuthRotateSpeed =
-            settings.constraints.azimuthRotateSpeed;
-        if (settings.constraints.polarRotateSpeed !== undefined)
-          cameraControlRef.current.polarRotateSpeed =
-            settings.constraints.polarRotateSpeed;
-        if (settings.constraints.truckSpeed !== undefined)
-          cameraControlRef.current.truckSpeed = settings.constraints.truckSpeed;
-        if (settings.constraints.dollySpeed !== undefined)
-          cameraControlRef.current.dollySpeed = settings.constraints.dollySpeed;
-        if (settings.constraints.draggingSmoothTime !== undefined)
-          cameraControlRef.current.draggingSmoothTime =
-            settings.constraints.draggingSmoothTime;
-        if (settings.constraints.smoothTime !== undefined)
-          cameraControlRef.current.smoothTime = settings.constraints.smoothTime;
-      }
-
-      // Update local state to match
-      setCameraPosition(settings.position);
-      setCameraTarget(settings.target);
-      setCameraUp(settings.up);
-
-      // Reset flag after a short delay to allow the camera to settle
-      setTimeout(() => {
-        isApplyingViewChange.current = false;
-      }, 150);
-    }
-  }, [activeView, views]);
-  //#endregion
-
-  // Camera update handler
-  const handleCameraUpdate = useCallback(() => {
-    if (!cameraControlRef.current || isApplyingViewChange.current) {
-      return;
-    }
-
-    const position = new THREE.Vector3();
-    const target = new THREE.Vector3();
-
-    cameraControlRef.current.getPosition(position);
-    cameraControlRef.current.getTarget(target);
-    // Update local state
-    setCameraPosition([position.x, position.y, position.z]);
-    setCameraTarget([target.x, target.y, target.z]);
-    setCameraUp([
-      cameraControlRef.current.camera.up.x,
-      cameraControlRef.current.camera.up.y,
-      cameraControlRef.current.camera.up.z,
-    ]);
-
-    // Save the camera state (debounced)
-    saveCameraState();
-  }, [saveCameraState]);
-
-  // Cleanup timer on unmount
-  useEffect(() => {
-    return () => {
-      if (saveStateTimer.current) {
-        clearTimeout(saveStateTimer.current);
-      }
-    };
-  }, []);
-
   //#region Canvas Style
   const toHexString = (color: number): string => {
     const fallback = "#ffffff";
@@ -620,36 +580,13 @@ function Viewer({ style, store, activeView }: ViewerProps) {
         />
         <CameraControls
           ref={cameraControlRef}
-          azimuthRotateSpeed={
-            cameraConstraints.azimuthRotateSpeed !== undefined
-              ? cameraConstraints.azimuthRotateSpeed
-              : 1.0
-          }
-          polarRotateSpeed={
-            cameraConstraints.polarRotateSpeed !== undefined
-              ? cameraConstraints.polarRotateSpeed
-              : 1.0
-          }
-          truckSpeed={
-            cameraConstraints.truckSpeed !== undefined
-              ? cameraConstraints.truckSpeed
-              : 1.0
-          }
-          dollySpeed={
-            cameraConstraints.dollySpeed !== undefined
-              ? cameraConstraints.dollySpeed
-              : 1.0
-          }
-          draggingSmoothTime={
-            cameraConstraints.draggingSmoothTime !== undefined
-              ? cameraConstraints.draggingSmoothTime
-              : 0
-          }
-          smoothTime={
-            cameraConstraints.smoothTime !== undefined
-              ? cameraConstraints.smoothTime
-              : 0
-          }
+          key={activeViewId}
+          azimuthRotateSpeed={cameraConstraints.azimuthRotateSpeed ?? 1.0}
+          polarRotateSpeed={cameraConstraints.polarRotateSpeed ?? 1.0}
+          truckSpeed={cameraConstraints.truckSpeed ?? 1.0}
+          dollySpeed={cameraConstraints.dollySpeed ?? 1.0}
+          draggingSmoothTime={cameraConstraints.draggingSmoothTime ?? 0}
+          smoothTime={cameraConstraints.smoothTime ?? 0}
           onUpdate={handleCameraUpdate}
         />
         {Attributes.Viewer.GridHelper && (
@@ -659,6 +596,9 @@ function Viewer({ style, store, activeView }: ViewerProps) {
           />
         )}
       </Canvas>
+      <div>
+        <p>{useOrthographic ? "ortho" : "perspective"}</p>
+      </div>
     </div>
   );
 }
