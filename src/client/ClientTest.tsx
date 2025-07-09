@@ -8,6 +8,7 @@ import { useEffect } from 'react'
 // import { useViews } from "@/viewer/hooks/useViews";
 import { createDijkstraViewerStore } from '@/store/dijkstraViewerStore'
 import { colors } from '@/constants/colors'
+import { Point3 } from '@/viewerapi/Geometry'
 
 export function ClientTest() {
   const viewerStore1 = useMemo(() => createDijkstraViewerStore(), [])
@@ -93,7 +94,7 @@ export function ClientTest() {
       .toString(16)
       .padEnd(6, '0')
 
-  const createBox = (point: { x: number; y: number; z: number }) => {
+  const createBox = (point: Point3) => {
     const blc = { x: point.x - 0.5, y: point.y - 0.5, z: point.z + 0.5 }
     const brc = { x: point.x + 0.5, y: point.y - 0.5, z: point.z + 0.5 }
     const tlc = {

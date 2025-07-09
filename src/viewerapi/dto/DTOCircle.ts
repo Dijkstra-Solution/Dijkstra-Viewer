@@ -1,17 +1,18 @@
 import { BufferAttribute, BufferGeometry, CircleGeometry, Vector3 } from 'three'
 import { DTOEntity } from './DTOEntity'
 import { HexToRGBNormalized } from '@/viewer/utils/colorUtil'
+import { Point3 } from '../Geometry'
 
 export class DTOCircle extends DTOEntity {
   readonly type = 'circle'
-  position: { x: number; y: number; z: number }
-  normal: { x: number; y: number; z: number }
+  position: Point3
+  normal: Point3
   radius: number
   color?: string
   constructor(
     guid: string,
-    position: { x: number; y: number; z: number } = { x: 0, y: 0, z: 0 },
-    normal: { x: number; y: number; z: number } = { x: 0, y: 1, z: 0 },
+    position: Point3 = { x: 0, y: 0, z: 0 },
+    normal: Point3 = { x: 0, y: 1, z: 0 },
     radius: number = 1,
     color?: string,
   ) {

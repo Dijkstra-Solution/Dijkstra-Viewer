@@ -4,7 +4,7 @@ import { Canvas } from '@react-three/fiber'
 import { CameraControls, OrthographicCamera, PerspectiveCamera } from '@react-three/drei'
 import React, { useCallback, useEffect, useMemo, useRef, useState } from 'react'
 import type { UseBoundStore, StoreApi } from 'zustand'
-import type { InternalDijkstraViewerStore } from '@/store/dijkstraViewerStore'
+import { InternalDijkstraViewerStore } from '@/viewerapi/dto/store/dijkstraViewer'
 interface ViewerProps {
   activeView: string
   store: UseBoundStore<StoreApi<InternalDijkstraViewerStore>>

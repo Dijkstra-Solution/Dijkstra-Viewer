@@ -1,21 +1,16 @@
 import { DTOEntity } from './DTOEntity'
 import { BufferGeometry, Vector3 } from 'three'
 import { LineGeometry } from 'three/examples/jsm/Addons.js'
+import { Point3 } from '../Geometry'
 
 export class DTOLine extends DTOEntity {
   readonly type: string = 'line'
-  start: { x: number; y: number; z: number }
-  end: { x: number; y: number; z: number }
+  start: Point3
+  end: Point3
   color?: string
   width?: number
 
-  constructor(
-    guid: string,
-    start: { x: number; y: number; z: number },
-    end: { x: number; y: number; z: number },
-    color?: string,
-    width?: number,
-  ) {
+  constructor(guid: string, start: Point3, end: Point3, color?: string, width?: number) {
     super(guid)
     this.start = start
     this.end = end

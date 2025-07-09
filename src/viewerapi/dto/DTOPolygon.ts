@@ -2,12 +2,13 @@ import { DTOEntity } from './DTOEntity'
 import { BufferAttribute, BufferGeometry, Vector3 } from 'three'
 import { HexToRGBNormalized } from '@/viewer/utils/colorUtil'
 import { Earcut } from 'three/src/extras/Earcut.js'
+import { Point3 } from '../Geometry'
 
 export class DTOPolygon extends DTOEntity {
   readonly type: string = 'polygon'
-  points: { x: number; y: number; z: number }[]
+  points: Point3[]
   color?: string
-  constructor(guid: string, points: { x: number; y: number; z: number }[], color?: string) {
+  constructor(guid: string, points: Point3[], color?: string) {
     super(guid)
     this.points = points
     this.color = color

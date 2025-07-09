@@ -1,4 +1,5 @@
 import { BufferGeometry } from 'three'
+import { Point3 } from '../Geometry'
 
 export abstract class DTOEntity {
   readonly guid: string
@@ -24,7 +25,7 @@ export abstract class DTOEntity {
     return this.#cachedGeometry!
   }
 
-  interactionPoints: { x: number; y: number; z: number }[] = []
+  interactionPoints: Point3[] = []
 
   protected abstract buildGeometry(): BufferGeometry
 }

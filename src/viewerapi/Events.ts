@@ -1,4 +1,5 @@
 import { BufferGeometry } from 'three'
+import { Point3 } from './Geometry'
 
 export const Events = {
   SelectionChanged: 'EntitySelected',
@@ -18,8 +19,8 @@ export type EventPayloads = {
   [Events.SelectionChanged]: { guids: string[] }
   [Events.SceneClicked]: {
     guid?: string
-    point: { x: number; y: number; z: number }
-    normal: { x: number; y: number; z: number }
+    point: Point3
+    normal: Point3
   }
   [Events.SceneUpdated]: { geometry: BufferGeometry }
   [Events.StatusMessage]: { message: string }
