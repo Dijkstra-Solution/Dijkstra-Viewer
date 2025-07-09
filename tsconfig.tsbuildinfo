@@ -13,7 +13,6 @@
     "./src/viewer/index.ts",
     "./src/viewer/hooks/useeventemitter.tsx",
     "./src/viewer/utils/colorutil.ts",
-    "./src/viewer/views/baseview.ts",
     "./src/viewerapi/eventtypes.ts",
     "./src/viewerapi/events.ts",
     "./src/viewerapi/index.ts",
