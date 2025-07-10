@@ -1,5 +1,5 @@
 import { BufferGeometry, Vector3 } from 'three'
-import { DTOEntity } from '../DTOEntity'
+import { DTOEntity } from '../mesh/DTOEntity'
 import { ViewStore } from './view'
 import { Point3 } from '@/viewerapi/Geometry'
 

@@ -26,14 +26,26 @@ function Viewer({ style, store, activeView }: ViewerProps) {
     smoothTime?: number
   }>({})
 
-  const { Attributes, fire } = store((state) => state)
+  const { Attributes, fire, Views: views, _internal: internal } = store((state) => state)
   const { Hover, Selection } = Attributes
-  const entities = store((state) => state._internal.entities)
+  const {
+    entities,
+    updateViewPosition,
+    setHoveredGUID,
+    setHoverIndex,
+    cycleHover,
+    setSelectedGUIDs,
+    setIntersectionPoint,
+    setHoveredObjects,
+  } = internal
 
-  const updateViewPosition = store((s) => s._internal.updateViewPosition)
-
-  // Map<string, ViewData>
-  const views = store((s) => s.Views)
+  const { hoveredGUID, hoverIndex, selectedGUIDs, intersectionPoint, hoveredObjects } = {
+    hoveredGUID: internal.getHoveredGUID(),
+    hoverIndex: internal.getHoverIndex(),
+    selectedGUIDs: internal.getSelectedGUIDs(),
+    intersectionPoint: internal.getIntersectionPoint(),
+    hoveredObjects: internal.getHoveredObjects(),
+  }
 
   const activeViewId = activeView ?? 'perspective'
 
@@ -116,25 +128,6 @@ function Viewer({ style, store, activeView }: ViewerProps) {
       }),
     [Selection.Color, Selection.Thickness],
   )
-  //#endregion
-
-  //#region Interaction Store
-
-  const hoveredGUID = store((s) => s._internal.getHoveredGUID())
-  const setHoveredGUID = store((s) => s._internal.setHoveredGUID)
-  const hoverIndex = store((s) => s._internal.getHoverIndex())
-  const setHoverIndex = store((s) => s._internal.setHoverIndex)
-  const cycleHover = store((s) => s._internal.cycleHover)
-
-  const selectedGUIDs = store((s) => s._internal.getSelectedGUIDs())
-  const setSelectedGUIDs = store((s) => s._internal.setSelectedGUIDs)
-
-  const intersectionPoint = store((s) => s._internal.getIntersectionPoint())
-  const setIntersectionPoint = store((s) => s._internal.setIntersectionPoint)
-
-  const hoveredObjects = store((s) => s._internal.getHoveredObjects())
-  const setHoveredObjects = store((s) => s._internal.setHoveredObjects)
-
   //#endregion
 
   //#region Selection & Hover
@@ -471,19 +464,6 @@ function Viewer({ style, store, activeView }: ViewerProps) {
     return '#' + color.toString(16)
   }
 
-  const containerStyles: React.CSSProperties = useMemo(() => {
-    return {
-      position: 'relative',
-      display: 'flex',
-      flexDirection: 'column',
-      margin: '10px',
-      overflow: 'hidden',
-      flex: 1,
-      backgroundColor: toHexString(Attributes.Viewer.BackgroundColor),
-      ...style,
-    }
-  }, [style, Attributes.Viewer.BackgroundColor])
-
   const angle = (3 * Math.PI) / 4
   //#endregion
 
@@ -495,7 +475,11 @@ function Viewer({ style, store, activeView }: ViewerProps) {
   }, [])
 
   return (
-    <div style={containerStyles} ref={containerRef}>
+    <div
+      className="viewer-container"
+      style={{ backgroundColor: toHexString(Attributes.Viewer.BackgroundColor), ...style }}
+      ref={containerRef}
+    >
       <Canvas
         camera={{ position: [0, 0, 5] }}
         onCreated={({ scene, raycaster }) => {

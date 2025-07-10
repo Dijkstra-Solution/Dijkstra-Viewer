@@ -1,7 +1,5 @@
 import '../App.css'
 import { Viewer } from '@/viewer/Viewer'
-import { DTOPolygon } from '@/viewerapi/dto/DTOPolygon'
-import { DTOComposite } from '@/viewerapi/dto/DTOComposite'
 import { generateUUID } from 'three/src/math/MathUtils.js'
 import { useCallback, useMemo, useState } from 'react'
 import { useEffect } from 'react'
@@ -9,6 +7,8 @@ import { useEffect } from 'react'
 import { createDijkstraViewerStore } from '@/store/dijkstraViewerStore'
 import { colors } from '@/constants/colors'
 import { Point3 } from '@/viewerapi/Geometry'
+import { createEntity } from '@/viewer/utils/entity'
+import { DTOComposite } from '@/viewerapi'
 
 export function ClientTest() {
   const viewerStore1 = useMemo(() => createDijkstraViewerStore(), [])
@@ -49,11 +49,10 @@ export function ClientTest() {
   )
 
   useEffect(() => {
-    Attributes.Hover.Enabled = true
-    Attributes.Selection.Enabled = true
-    Attributes.Viewer.BackgroundColor = colors.background
-    Attributes.Hover.Color = colors.primary
-    Attributes.Selection.Color = colors.primarySelected
+    SetAttribute('Hover', { Enabled: true, Color: colors.primary })
+    SetAttribute('Viewer', { BackgroundColor: colors.background })
+    SetAttribute('Selection', { Enabled: true, Color: colors.primarySelected })
+
     on('StatusMessageChanged', ({ message }) => {
       console.log(message)
     })
@@ -122,14 +121,14 @@ export function ClientTest() {
     }
 
     const col = randomHex()
-    const bottom = new DTOPolygon(generateUUID(), [blc, blf, brf, brc], col)
-    const top = new DTOPolygon(generateUUID(), [tlc, trc, trf, tlf], col)
-    const left = new DTOPolygon(generateUUID(), [blc, tlc, tlf, blf], col)
-    const right = new DTOPolygon(generateUUID(), [brc, brf, trf, trc], col)
-    const front = new DTOPolygon(generateUUID(), [blc, brc, trc, tlc], col)
-    const back = new DTOPolygon(generateUUID(), [blf, tlf, trf, brf], col)
+    const bottom = createEntity(generateUUID(), 'polygon', { points: [blc, blf, brf, brc], color: col })
+    const top = createEntity(generateUUID(), 'polygon', { points: [tlc, trc, trf, tlf], color: col })
+    const left = createEntity(generateUUID(), 'polygon', { points: [blc, tlc, tlf, blf], color: col })
+    const right = createEntity(generateUUID(), 'polygon', { points: [brc, brf, trf, trc], color: col })
+    const front = createEntity(generateUUID(), 'polygon', { points: [blc, brc, trc, tlc], color: col })
+    const back = createEntity(generateUUID(), 'polygon', { points: [blf, tlf, trf, brf], color: col })
 
-    const composite = new DTOComposite(generateUUID())
+    const composite = createEntity(generateUUID(), 'composite', { children: [] }) as DTOComposite
     composite.children.push(bottom, top, left, right, front, back)
     console.log(Views)
     return composite
