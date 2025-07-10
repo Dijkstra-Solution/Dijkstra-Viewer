@@ -28,6 +28,8 @@ function Viewer({ style, store, activeView }: ViewerProps) {
 
   const { Attributes, fire, Views: views, _internal: internal } = store((state) => state)
   const { Hover, Selection } = Attributes
+
+  //#region Interaction Store
   const {
     entities,
     updateViewPosition,
@@ -46,6 +48,7 @@ function Viewer({ style, store, activeView }: ViewerProps) {
     intersectionPoint: internal.getIntersectionPoint(),
     hoveredObjects: internal.getHoveredObjects(),
   }
+  //#endregion
 
   const activeViewId = activeView ?? 'perspective'
 
