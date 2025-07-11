@@ -1,8 +1,8 @@
-import "./App.css";
+import './App.css'
 
 // Egyszerű egyedi nézet, amit a kliens könnyen létrehozhat
 function App() {
-  return <></>;
+  return <></>
 }
 
-export default App;
+export default App
